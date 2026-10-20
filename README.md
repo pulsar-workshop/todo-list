@@ -1,6 +1,8 @@
 # Todo List
 
-A [Pulsar](https://github.com/riclud/pulsar) app (QML UI + Bun backend).
+A minimal todo list built with [Pulsar](https://github.com/riclud/pulsar) (QML UI + Bun backend).
+
+Add a task, mark it done, or delete it. Tasks are persisted in the app data directory.
 
 ## Requirements
 
