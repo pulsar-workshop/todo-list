@@ -64,7 +64,7 @@ ApplicationWindow {
                 required property var modelData
 
                 width: list.width
-                height: 48
+                height: 60
                 radius: 8
                 color: "#ffffff"
 
@@ -79,13 +79,51 @@ ApplicationWindow {
                         onClicked: Pulsar.emit("toggle-todo", { ID: row.modelData.ID })
                     }
 
-                    Label {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: row.modelData.text
-                        color: row.modelData.done ? "#a1a1a9" : "#1d1d1f"
-                        font.pixelSize: 15
-                        font.strikeout: row.modelData.done
-                        elide: Text.ElideRight
+                        spacing: 0
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: row.modelData.text
+                            color: row.modelData.done ? "#a1a1a9" : "#1d1d1f"
+                            font.pixelSize: 15
+                            font.strikeout: row.modelData.done
+                            elide: Text.ElideRight
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 12
+
+                            Label {
+                                id: createdLabel
+
+                                text: "Создано: " + Qt.formatDate(new Date(row.modelData.createdAT), "dd.MM.yyyy")
+                                color: createdHover.hovered ? "#3b82f6" : "#a1a1a9"
+                                font.pixelSize: 12
+
+                                HoverHandler {
+                                    id: createdHover
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: window.editDate(row.modelData.ID, row.modelData.createdAT)
+                                }
+
+                                ToolTip.visible: createdHover.hovered
+                                ToolTip.text: "Изменить дату"
+                            }
+
+                            Label {
+                                visible: row.modelData.completedAT !== null
+                                text: "Выполнено: " + Qt.formatDate(new Date(row.modelData.completedAT), "dd.MM.yyyy")
+                                color: "#a1a1a9"
+                                font.pixelSize: 12
+                            }
+                        }
                     }
 
                     Button {
@@ -105,11 +143,118 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: dateDialog
+
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        title: "Дата создания"
+        width: 340
+        padding: 20
+
+        property string todoID: ""
+
+        function openFor(ID, createdAT) {
+            todoID = ID
+            dateInput.text = Qt.formatDate(new Date(createdAT), "dd.MM.yyyy")
+            dateError.visible = false
+            open()
+        }
+
+        function parseDate(text) {
+            const parts = text.split(".")
+
+            if (parts.length !== 3) return null
+
+            const day = Number(parts[0])
+            const month = Number(parts[1])
+            const year = Number(parts[2])
+
+            if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) return null
+            if (year < 1970 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return null
+
+            const date = new Date(year, month - 1, day)
+
+            if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
+
+            return date.getTime()
+        }
+
+        function save() {
+            const value = parseDate(dateInput.text.trim())
+
+            if (value === null) {
+                dateError.visible = true
+                return
+            }
+
+            Pulsar.emit("set-todo-date", { ID: todoID, createdAT: value })
+            close()
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 8
+
+            Label {
+                text: "Укажите дату в формате ДД.ММ.ГГГГ"
+                color: "#8e8e96"
+                font.pixelSize: 13
+            }
+
+            TextField {
+                id: dateInput
+
+                Layout.fillWidth: true
+                font.pixelSize: 15
+                onAccepted: dateDialog.save()
+            }
+
+            Label {
+                id: dateError
+
+                visible: false
+                text: "Неверная дата"
+                color: "#ef4444"
+                font.pixelSize: 12
+            }
+        }
+
+        footer: Item {
+            implicitHeight: 44
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 8
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    text: "Отмена"
+                    onClicked: dateDialog.close()
+                }
+
+                Button {
+                    text: "Сохранить"
+                    onClicked: dateDialog.save()
+                }
+            }
+        }
+
+        onOpened: dateInput.forceActiveFocus()
+    }
+
     function addTask() {
         if (input.text.trim().length === 0) return
 
         Pulsar.emit("add-todo", { text: input.text })
         input.text = ""
+    }
+
+    function editDate(ID, createdAT) {
+        dateDialog.openFor(ID, createdAT)
     }
 
     Component.onCompleted: input.forceActiveFocus()
