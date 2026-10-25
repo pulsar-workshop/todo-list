@@ -3,7 +3,10 @@
   "name": "todo-list",
   "version": "0.1.0",
   "main": "main.ts",
-  "targets": ["desktop", "android"],
+  "targets": [
+    "desktop",
+    "android"
+  ],
   "compat": "portable",
   "windows": [
     {
@@ -14,5 +17,11 @@
       "title": "Todo List"
     }
   ],
-  "permissions": ["net"]
+  "permissions": [
+    "storage",
+    "fs",
+    "paths",
+    "dialog",
+    "net"
+  ]
 }
