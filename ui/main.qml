@@ -12,14 +12,28 @@ ApplicationWindow {
     title: "Todo List"
     color: "#f5f5f7"
 
-    TapHandler {
-        onTapped: (eventPoint) => {
-            const point = input.mapFromItem(window.contentItem, eventPoint.position.x, eventPoint.position.y)
+    function tagByID(ID) {
+        const list = Store.tags ?? []
 
-            if (input.contains(point)) return
+        return list.find((tag) => tag.ID === ID) ?? { name: ID, color: "#64748b" }
+    }
 
-            input.focus = false
-        }
+    function formatDates(todo) {
+        const format = (value) => Qt.formatDateTime(new Date(value), "dd.MM.yyyy HH:mm")
+
+        if (todo.startAT !== null && todo.endAT !== null) return "с " + format(todo.startAT) + " до " + format(todo.endAT)
+        if (todo.endAT !== null) return "до " + format(todo.endAT)
+        if (todo.startAT !== null) return "с " + format(todo.startAT)
+
+        return "Создано: " + format(todo.createdAT)
+    }
+
+    function subtaskLabel(todo) {
+        if (!todo.subtasks || todo.subtasks.length === 0) return ""
+
+        const done = todo.subtasks.filter((subtask) => subtask.done).length
+
+        return "Подзадачи: " + done + "/" + todo.subtasks.length
     }
 
     ColumnLayout {
@@ -90,7 +104,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            spacing: 4
+            spacing: 6
             model: Store.todos ?? []
 
             TapHandler {
@@ -103,14 +117,18 @@ ApplicationWindow {
                 required property var modelData
 
                 width: list.width
-                height: 60
-                radius: 8
+                height: content.implicitHeight + 20
+                radius: 10
                 color: "#ffffff"
 
                 RowLayout {
+                    id: content
+
                     anchors.fill: parent
                     anchors.leftMargin: 12
                     anchors.rightMargin: 8
+                    anchors.topMargin: 10
+                    anchors.bottomMargin: 10
                     spacing: 8
 
                     CheckBox {
@@ -120,45 +138,68 @@ ApplicationWindow {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 0
+                        spacing: 3
 
-                        Label {
-                            Layout.fillWidth: true
-                            text: row.modelData.text
-                            color: row.modelData.done ? "#a1a1a9" : "#1d1d1f"
-                            font.pixelSize: 15
-                            font.strikeout: row.modelData.done
-                            elide: Text.ElideRight
+                        TapHandler {
+                            onTapped: window.editTask(row.modelData)
                         }
 
                         RowLayout {
                             Layout.fillWidth: true
+                            spacing: 6
+
+                            Label {
+                                Layout.fillWidth: true
+                                text: row.modelData.text
+                                color: row.modelData.done ? "#a1a1a9" : "#1d1d1f"
+                                font.pixelSize: 16
+                                font.bold: true
+                                font.strikeout: row.modelData.done
+                                elide: Text.ElideRight
+                            }
+
+                            Repeater {
+                                model: row.modelData.tags
+
+                                delegate: TagChip {
+                                    required property var modelData
+
+                                    label: window.tagByID(modelData).name
+                                    chipColor: window.tagByID(modelData).color
+                                    selected: true
+                                }
+                            }
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            visible: row.modelData.description !== ""
+                            text: row.modelData.description
+                            color: "#8e8e96"
+                            font.pixelSize: 13
+                            elide: Text.ElideRight
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: window.formatDates(row.modelData)
+                            color: "#a1a1a9"
+                            font.pixelSize: 12
+                        }
+
+                        RowLayout {
                             spacing: 12
 
                             Label {
-                                id: createdLabel
-
-                                text: "Создано: " + Qt.formatDate(new Date(row.modelData.createdAT), "dd.MM.yyyy")
-                                color: createdHover.hovered ? "#3b82f6" : "#a1a1a9"
+                                visible: window.subtaskLabel(row.modelData) !== ""
+                                text: window.subtaskLabel(row.modelData)
+                                color: "#a1a1a9"
                                 font.pixelSize: 12
-
-                                HoverHandler {
-                                    id: createdHover
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: window.editDate(row.modelData.ID, row.modelData.createdAT)
-                                }
-
-                                ToolTip.visible: createdHover.hovered
-                                ToolTip.text: "Изменить дату"
                             }
 
                             Label {
-                                visible: row.modelData.completedAT !== null
-                                text: "Выполнено: " + Qt.formatDate(new Date(row.modelData.completedAT), "dd.MM.yyyy")
+                                visible: row.modelData.files.length > 0
+                                text: "Файлов: " + row.modelData.files.length
                                 color: "#a1a1a9"
                                 font.pixelSize: 12
                             }
@@ -166,9 +207,9 @@ ApplicationWindow {
                     }
 
                     Button {
-                        text: "Удалить"
+                        text: "Изменить"
                         flat: true
-                        onClicked: Pulsar.emit("delete-todo", { ID: row.modelData.ID })
+                        onClicked: window.editTask(row.modelData)
                     }
                 }
             }
@@ -182,118 +223,46 @@ ApplicationWindow {
         }
     }
 
-    Dialog {
-        id: dateDialog
+    TaskEditor {
+        id: editor
 
-        parent: Overlay.overlay
-        anchors.centerIn: parent
-        modal: true
-        title: "Дата создания"
-        width: 340
-        padding: 20
+        onSaveRequested: (json) => Pulsar.emit("save-task", { json })
+        onDeleteRequested: (ID) => Pulsar.emit("delete-todo", { ID })
+        onAddTagRequested: (name, color) => Pulsar.emit("add-tag", { name, color })
+        onPickFilesRequested: (ID) => Pulsar.emit("pick-files", { ID })
+        onRemoveFileRequested: (ID, path) => Pulsar.emit("remove-file", { ID, path })
+    }
 
-        property string todoID: ""
+    Connections {
+        target: Qt.inputMethod
 
-        function openFor(ID, createdAT) {
-            todoID = ID
-            dateInput.text = Qt.formatDate(new Date(createdAT), "dd.MM.yyyy")
-            dateError.visible = false
-            open()
+        function onVisibleChanged() {
+            if (!Qt.inputMethod.visible && input.activeFocus) input.focus = false
         }
+    }
 
-        function parseDate(text) {
-            const parts = text.split(".")
+    Connections {
+        target: Pulsar
 
-            if (parts.length !== 3) return null
+        function onAppEvent(event, payload) {
+            if (!payload) return
 
-            const day = Number(parts[0])
-            const month = Number(parts[1])
-            const year = Number(parts[2])
-
-            if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) return null
-            if (year < 1970 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return null
-
-            const date = new Date(year, month - 1, day)
-
-            if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null
-
-            return date.getTime()
+            if (event === "tag-added") editor.attachTag(payload.tag)
+            if (event === "task-files" && editor.draft && payload.ID === editor.draft.ID) editor.attachFiles(payload.files)
         }
-
-        function save() {
-            const value = parseDate(dateInput.text.trim())
-
-            if (value === null) {
-                dateError.visible = true
-                return
-            }
-
-            Pulsar.emit("set-todo-date", { ID: todoID, createdAT: value })
-            close()
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 8
-
-            Label {
-                text: "Укажите дату в формате ДД.ММ.ГГГГ"
-                color: "#8e8e96"
-                font.pixelSize: 13
-            }
-
-            TextField {
-                id: dateInput
-
-                Layout.fillWidth: true
-                font.pixelSize: 15
-                onAccepted: dateDialog.save()
-            }
-
-            Label {
-                id: dateError
-
-                visible: false
-                text: "Неверная дата"
-                color: "#ef4444"
-                font.pixelSize: 12
-            }
-        }
-
-        footer: Item {
-            implicitHeight: 44
-
-            RowLayout {
-                anchors.fill: parent
-                spacing: 8
-
-                Item {
-                    Layout.fillWidth: true
-                }
-
-                Button {
-                    text: "Отмена"
-                    onClicked: dateDialog.close()
-                }
-
-                Button {
-                    text: "Сохранить"
-                    onClicked: dateDialog.save()
-                }
-            }
-        }
-
-        onOpened: dateInput.forceActiveFocus()
     }
 
     Dialog {
         id: syncDialog
 
         parent: Overlay.overlay
-        anchors.centerIn: parent
         modal: true
         title: "Синхронизация"
-        width: 360
-        padding: 20
+        width: Math.min(window.width - 32, 420)
+        height: Math.min(Overlay.overlay.height - 40, 360)
+        x: (Overlay.overlay.width - width) / 2
+        y: Math.max(8, (Overlay.overlay.height - height) / 2 - (Qt.inputMethod.visible ? Qt.inputMethod.keyboardRectangle.height / 2 : 0))
+        padding: 16
 
         function openDialog() {
             hostInput.text = Store.syncHost ?? ""
@@ -318,52 +287,39 @@ ApplicationWindow {
         }
 
         contentItem: ColumnLayout {
-            spacing: 8
+            spacing: 4
 
-            Label {
+            RowLayout {
                 Layout.fillWidth: true
-                text: "Адрес сервера (IP или домен). Пусто — синхронизация выключена."
-                color: "#8e8e96"
-                font.pixelSize: 13
-                wrapMode: Text.WordWrap
-            }
+                spacing: 8
 
-            TextField {
-                id: hostInput
+                TextField {
+                    id: hostInput
 
-                Layout.fillWidth: true
-                placeholderText: "например, 192.168.1.10"
-                font.pixelSize: 15
-            }
+                    Layout.fillWidth: true
+                    placeholderText: "Адрес сервера"
+                    font.pixelSize: 14
+                }
 
-            Label {
-                text: "Порт"
-                color: "#8e8e96"
-                font.pixelSize: 13
-            }
+                TextField {
+                    id: portInput
 
-            TextField {
-                id: portInput
-
-                Layout.fillWidth: true
-                font.pixelSize: 15
-                inputMethodHints: Qt.ImhDigitsOnly
-                onAccepted: syncDialog.save()
-            }
-
-            Label {
-                text: "Пароль (если задан на сервере)"
-                color: "#8e8e96"
-                font.pixelSize: 13
+                    Layout.preferredWidth: 96
+                    placeholderText: "Порт"
+                    font.pixelSize: 14
+                    inputMethodHints: Qt.ImhDigitsOnly
+                    onAccepted: syncDialog.save()
+                }
             }
 
             TextField {
                 id: passwordInput
 
                 Layout.fillWidth: true
-                font.pixelSize: 15
+                placeholderText: "Пароль (необязательно)"
+                font.pixelSize: 14
                 echoMode: TextInput.Password
-                placeholderText: "необязательно"
+                onAccepted: syncDialog.save()
             }
 
             Label {
@@ -373,13 +329,24 @@ ApplicationWindow {
                 color: "#ef4444"
                 font.pixelSize: 12
             }
+
+            Label {
+                Layout.fillWidth: true
+                text: "Пустой адрес выключает синхронизацию."
+                color: "#8e8e96"
+                font.pixelSize: 12
+                wrapMode: Text.WordWrap
+            }
         }
 
         footer: Item {
-            implicitHeight: 44
+            implicitHeight: 56
 
             RowLayout {
                 anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.bottomMargin: 4
                 spacing: 8
 
                 Item {
@@ -427,8 +394,8 @@ ApplicationWindow {
         input.text = ""
     }
 
-    function editDate(ID, createdAT) {
-        dateDialog.openFor(ID, createdAT)
+    function editTask(todo) {
+        editor.openFor(todo, Store.tags ?? [])
     }
 
     Component.onCompleted: input.forceActiveFocus()

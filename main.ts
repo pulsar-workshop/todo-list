@@ -1,11 +1,37 @@
-import { App, net, storage } from "pulsar"
+import { App, dialog, fs, net, paths, storage } from "pulsar"
 
-type Todo = {
+
+type Subtask = {
   ID: string
   text: string
   done: boolean
   createdAT: number
   completedAT: number | null
+}
+
+type Attachment = {
+  name: string
+  path: string
+}
+
+type Todo = {
+  ID: string
+  text: string
+  description: string
+  done: boolean
+  createdAT: number
+  completedAT: number | null
+  startAT: number | null
+  endAT: number | null
+  tags: string[]
+  subtasks: Subtask[]
+  files: Attachment[]
+}
+
+type Tag = {
+  ID: string
+  name: string
+  color: string
 }
 
 type SyncSettings = {
@@ -21,12 +47,45 @@ const app = new App()
 const sync = { dirty: false }
 
 let syncSettings: SyncSettings = { host: "", port: DEFAULT_PORT, password: "" }
+let todos: Todo[] = []
+let tags: Tag[] = []
 
 const newID = () => {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-let todos: Todo[] = []
+const asNumber = (value: unknown): number | null => {
+  return typeof value === "number" && Number.isFinite(value) ? value : null
+}
+
+const parseSubtask = (value: unknown): Subtask | null => {
+  if (typeof value !== "object" || value === null) return null
+
+  const record = value as Record<string, unknown>
+
+  if (typeof record.ID !== "string") return null
+  if (typeof record.text !== "string") return null
+  if (typeof record.done !== "boolean") return null
+
+  return {
+    ID: record.ID,
+    text: record.text,
+    done: record.done,
+    createdAT: asNumber(record.createdAT) ?? Date.now(),
+    completedAT: asNumber(record.completedAT),
+  }
+}
+
+const parseAttachment = (value: unknown): Attachment | null => {
+  if (typeof value !== "object" || value === null) return null
+
+  const record = value as Record<string, unknown>
+
+  if (typeof record.name !== "string") return null
+  if (typeof record.path !== "string") return null
+
+  return { name: record.name, path: record.path }
+}
 
 const parseTodo = (value: unknown): Todo | null => {
   if (typeof value !== "object" || value === null) return null
@@ -38,17 +97,39 @@ const parseTodo = (value: unknown): Todo | null => {
   if (typeof record.text !== "string") return null
   if (typeof record.done !== "boolean") return null
 
-  const rawCreatedAT = record.createdAT ?? record.createdAt
-  const createdAT = typeof rawCreatedAT === "number" ? rawCreatedAT : Date.now()
-  const completedAT = typeof record.completedAT === "number" ? record.completedAT : null
+  const subtasks = Array.isArray(record.subtasks)
+    ? record.subtasks.map(parseSubtask).filter((subtask): subtask is Subtask => subtask !== null)
+    : []
+
+  const files = Array.isArray(record.files)
+    ? record.files.map(parseAttachment).filter((file): file is Attachment => file !== null)
+    : []
 
   return {
     ID: rawID,
     text: record.text,
+    description: typeof record.description === "string" ? record.description : "",
     done: record.done,
-    createdAT,
-    completedAT,
+    createdAT: asNumber(record.createdAT ?? record.createdAt) ?? Date.now(),
+    completedAT: asNumber(record.completedAT),
+    startAT: asNumber(record.startAT),
+    endAT: asNumber(record.endAT),
+    tags: Array.isArray(record.tags) ? record.tags.filter((tag): tag is string => typeof tag === "string") : [],
+    subtasks,
+    files,
   }
+}
+
+const parseTag = (value: unknown): Tag | null => {
+  if (typeof value !== "object" || value === null) return null
+
+  const record = value as Record<string, unknown>
+
+  if (typeof record.ID !== "string") return null
+  if (typeof record.name !== "string") return null
+  if (typeof record.color !== "string") return null
+
+  return { ID: record.ID, name: record.name, color: record.color }
 }
 
 const syncBase = (): string => {
@@ -83,10 +164,10 @@ const push = async () => {
   sync.dirty = true
 
   try {
-    await net.fetch(`${base}/todos`, {
+    await net.fetch(`${base}/state`, {
       method: "POST",
       headers: syncHeaders(),
-      body: JSON.stringify(todos),
+      body: JSON.stringify({ todos, tags }),
       timeoutMs: 2500,
     })
 
@@ -97,29 +178,33 @@ const push = async () => {
   }
 }
 
-const save = () => {
-  void storage.set("todos", todos)
-  void push()
-}
-
 const pull = async () => {
   const base = syncBase()
 
   if (!base || sync.dirty) return
 
   try {
-    const response = await net.fetch(`${base}/todos`, { headers: syncHeaders(), timeoutMs: 2500 })
-    const list = JSON.parse(response.text) as unknown
+    const response = await net.fetch(`${base}/state`, { headers: syncHeaders(), timeoutMs: 2500 })
+    const parsed = JSON.parse(response.text) as unknown
 
     setStatus("ok")
 
-    if (!Array.isArray(list)) return
+    if (typeof parsed !== "object" || parsed === null) return
 
-    const next = list.map(parseTodo).filter((todo): todo is Todo => todo !== null)
+    const record = parsed as Record<string, unknown>
+    const remoteTodos = Array.isArray(record.todos)
+      ? record.todos.map(parseTodo).filter((todo): todo is Todo => todo !== null)
+      : []
+    const remoteTags = Array.isArray(record.tags)
+      ? record.tags.map(parseTag).filter((tag): tag is Tag => tag !== null)
+      : []
 
-    if (JSON.stringify(next) === JSON.stringify(todos)) return
+    const same = JSON.stringify(remoteTodos) === JSON.stringify(todos) && JSON.stringify(remoteTags) === JSON.stringify(tags)
 
-    todos = next
+    if (same) return
+
+    todos = remoteTodos
+    tags = remoteTags
     render()
   } catch {
     setStatus("error")
@@ -158,7 +243,14 @@ const saveSync = async (params: { host?: unknown; port?: unknown; password?: unk
 
 const render = () => {
   app.store.set("todos", todos)
+  app.store.set("tags", tags)
   app.store.set("activeCount", todos.filter((todo) => !todo.done).length)
+}
+
+const save = () => {
+  void storage.set("todos", todos)
+  void storage.set("tags", tags)
+  void push()
 }
 
 const addTodo = (params: { text?: unknown }) => {
@@ -171,11 +263,40 @@ const addTodo = (params: { text?: unknown }) => {
     {
       ID: newID(),
       text,
+      description: "",
       done: false,
       createdAT: Date.now(),
       completedAT: null,
+      startAT: null,
+      endAT: null,
+      tags: [],
+      subtasks: [],
+      files: [],
     },
   ]
+
+  render()
+  save()
+}
+
+const saveTask = (params: { json?: unknown; task?: unknown }) => {
+  let value: unknown = params?.task
+
+  if (typeof params?.json === "string") {
+    try {
+      value = JSON.parse(params.json)
+    } catch {
+      return
+    }
+  }
+
+  const task = parseTodo(value)
+
+  if (!task) return
+
+  const exists = todos.some((todo) => todo.ID === task.ID)
+
+  todos = exists ? todos.map((todo) => (todo.ID === task.ID ? task : todo)) : [...todos, task]
 
   render()
   save()
@@ -206,7 +327,7 @@ const toggleTodo = (params: { ID?: unknown }) => {
   save()
 }
 
-const deleteTodo = (params: { ID?: unknown }) => {
+const deleteTodo = async (params: { ID?: unknown }) => {
   const ID = typeof params?.ID === "string" ? params.ID : ""
 
   if (!ID) return
@@ -215,38 +336,119 @@ const deleteTodo = (params: { ID?: unknown }) => {
 
   render()
   save()
+
+  try {
+    const dirs = await paths.get()
+
+    await fs.remove(`${dirs.data}/attachments/${ID}`, true)
+  } catch {}
 }
 
-const setTodoDate = (params: { ID?: unknown; createdAT?: unknown }) => {
-  const ID = typeof params?.ID === "string" ? params.ID : ""
-  const rawCreatedAT = params?.createdAT
-  const createdAT = typeof rawCreatedAT === "number" && Number.isFinite(rawCreatedAT) ? rawCreatedAT : null
+const addTag = (params: { name?: unknown; color?: unknown }) => {
+  const name = typeof params?.name === "string" ? params.name.trim() : ""
+  const color = typeof params?.color === "string" ? params.color : "#3b82f6"
 
-  if (!ID || createdAT === null) return
+  if (!name) return
 
-  const exists = todos.some((todo) => todo.ID === ID)
+  const existing = tags.find((tag) => tag.name.toLowerCase() === name.toLowerCase())
 
-  if (!exists) return
+  if (existing) {
+    app.send("tag-added", { tag: existing })
+    return
+  }
 
-  todos = todos.map((todo) => (todo.ID === ID ? { ...todo, createdAT } : todo))
+  const tag: Tag = { ID: newID(), name, color }
+
+  tags = [...tags, tag]
 
   render()
   save()
+
+  app.send("tag-added", { tag })
+}
+
+const pickFiles = async (params: { ID?: unknown }) => {
+  const ID = typeof params?.ID === "string" ? params.ID : ""
+
+  if (!ID) return
+
+  let picked: string[] = []
+
+  try {
+    picked = await dialog.openFiles({ title: "Прикрепить файлы" })
+  } catch {
+    return
+  }
+
+  if (picked.length === 0) return
+
+  const dirs = await paths.get()
+  const target = `${dirs.data}/attachments/${ID}`
+  const added: Attachment[] = []
+
+  try {
+    await fs.mkdir(target)
+  } catch {}
+
+  for (const source of picked) {
+    const name = source.split(/[\\/]/).pop() ?? source
+    const destination = `${target}/${Date.now()}-${name}`
+
+    try {
+      await fs.copy(source, destination)
+
+      added.push({ name, path: destination })
+    } catch {}
+  }
+
+  if (added.length === 0) return
+
+  todos = todos.map((todo) => (todo.ID === ID ? { ...todo, files: [...todo.files, ...added] } : todo))
+
+  render()
+  save()
+
+  app.send("task-files", { ID, files: added })
+}
+
+const removeFile = (params: { ID?: unknown; path?: unknown }) => {
+  const ID = typeof params?.ID === "string" ? params.ID : ""
+  const path = typeof params?.path === "string" ? params.path : ""
+
+  if (!ID || !path) return
+
+  todos = todos.map((todo) => {
+    if (todo.ID !== ID) return todo
+
+    return { ...todo, files: todo.files.filter((file) => file.path !== path) }
+  })
+
+  render()
+  save()
+
+  void fs.remove(path).catch(() => false)
 }
 
 const restore = async () => {
-  const saved = await storage.get("todos")
-  const list = Array.isArray(saved) ? saved : []
+  const savedTodos = await storage.get("todos")
+  const savedTags = await storage.get("tags")
 
-  todos = list.map(parseTodo).filter((todo): todo is Todo => todo !== null)
+  todos = (Array.isArray(savedTodos) ? savedTodos : [])
+    .map(parseTodo)
+    .filter((todo): todo is Todo => todo !== null)
+
+  tags = (Array.isArray(savedTags) ? savedTags : []).map(parseTag).filter((tag): tag is Tag => tag !== null)
 
   render()
 }
 
 app.on("add-todo", addTodo)
+app.on("save-task", saveTask)
 app.on("toggle-todo", toggleTodo)
 app.on("delete-todo", deleteTodo)
-app.on("set-todo-date", setTodoDate)
+app.on("add-tag", addTag)
+app.on("pick-files", pickFiles)
+app.on("remove-file", removeFile)
 app.on("save-sync", saveSync)
 
 const start = async () => {
