@@ -17,17 +17,42 @@ ApplicationWindow {
         anchors.margins: 24
         spacing: 12
 
-        Label {
-            text: "Задачи"
-            color: "#1d1d1f"
-            font.pixelSize: 28
-            font.bold: true
-        }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
 
-        Label {
-            text: "Осталось: " + (Store.activeCount ?? 0)
-            color: "#8e8e96"
-            font.pixelSize: 14
+            ColumnLayout {
+                spacing: 2
+
+                Label {
+                    text: "Задачи"
+                    color: "#1d1d1f"
+                    font.pixelSize: 28
+                    font.bold: true
+                }
+
+                Label {
+                    text: "Осталось: " + (Store.activeCount ?? 0)
+                    color: "#8e8e96"
+                    font.pixelSize: 14
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Label {
+                text: window.syncLabel()
+                color: window.syncColor()
+                font.pixelSize: 12
+            }
+
+            Button {
+                text: "Настройки"
+                flat: true
+                onClicked: syncDialog.openDialog()
+            }
         }
 
         RowLayout {
@@ -244,6 +269,125 @@ ApplicationWindow {
         }
 
         onOpened: dateInput.forceActiveFocus()
+    }
+
+    Dialog {
+        id: syncDialog
+
+        parent: Overlay.overlay
+        anchors.centerIn: parent
+        modal: true
+        title: "Синхронизация"
+        width: 360
+        padding: 20
+
+        function openDialog() {
+            hostInput.text = Store.syncHost ?? ""
+            portInput.text = Store.syncPort ?? "8787"
+            syncError.visible = false
+            open()
+        }
+
+        function save() {
+            const text = portInput.text.trim()
+            const port = Number(text)
+
+            if (!Number.isInteger(port) || port < 1 || port > 65535) {
+                syncError.text = "Порт должен быть от 1 до 65535"
+                syncError.visible = true
+                return
+            }
+
+            Pulsar.emit("save-sync", { host: hostInput.text, port: text })
+            close()
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 8
+
+            Label {
+                Layout.fillWidth: true
+                text: "Адрес сервера (IP или домен). Пусто — синхронизация выключена."
+                color: "#8e8e96"
+                font.pixelSize: 13
+                wrapMode: Text.WordWrap
+            }
+
+            TextField {
+                id: hostInput
+
+                Layout.fillWidth: true
+                placeholderText: "например, 192.168.1.10"
+                font.pixelSize: 15
+            }
+
+            Label {
+                text: "Порт"
+                color: "#8e8e96"
+                font.pixelSize: 13
+            }
+
+            TextField {
+                id: portInput
+
+                Layout.fillWidth: true
+                font.pixelSize: 15
+                inputMethodHints: Qt.ImhDigitsOnly
+                onAccepted: syncDialog.save()
+            }
+
+            Label {
+                id: syncError
+
+                visible: false
+                color: "#ef4444"
+                font.pixelSize: 12
+            }
+        }
+
+        footer: Item {
+            implicitHeight: 44
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 8
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    text: "Отмена"
+                    onClicked: syncDialog.close()
+                }
+
+                Button {
+                    text: "Сохранить"
+                    onClicked: syncDialog.save()
+                }
+            }
+        }
+
+        onOpened: hostInput.forceActiveFocus()
+    }
+
+    function syncLabel() {
+        const status = Store.syncStatus ?? "off"
+
+        if (status === "ok") return "Синхронизировано"
+        if (status === "error") return "Сервер недоступен"
+        if (status === "idle") return "Ожидание"
+
+        return "Синхронизация выключена"
+    }
+
+    function syncColor() {
+        const status = Store.syncStatus ?? "off"
+
+        if (status === "ok") return "#22c55e"
+        if (status === "error") return "#ef4444"
+
+        return "#a1a1a9"
     }
 
     function addTask() {

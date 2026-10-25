@@ -1,4 +1,4 @@
-import { App, storage } from "pulsar"
+import { App, net, storage } from "pulsar"
 
 type Todo = {
   ID: string
@@ -8,7 +8,18 @@ type Todo = {
   completedAT: number | null
 }
 
+type SyncSettings = {
+  host: string
+  port: string
+}
+
+const DEFAULT_PORT = "8787"
+
 const app = new App()
+
+const sync = { dirty: false }
+
+let syncSettings: SyncSettings = { host: "", port: DEFAULT_PORT }
 
 const newID = () => {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
@@ -39,8 +50,98 @@ const parseTodo = (value: unknown): Todo | null => {
   }
 }
 
+const syncBase = (): string => {
+  if (!syncSettings.host) return ""
+
+  return `http://${syncSettings.host}:${syncSettings.port}`
+}
+
+const setStatus = (status: string) => {
+  app.store.set("syncStatus", status)
+  app.store.set("syncHost", syncSettings.host)
+  app.store.set("syncPort", syncSettings.port)
+}
+
+const push = async () => {
+  const base = syncBase()
+
+  if (!base) {
+    setStatus("off")
+    return
+  }
+
+  sync.dirty = true
+
+  try {
+    await net.fetch(`${base}/todos`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(todos),
+      timeoutMs: 2500,
+    })
+
+    sync.dirty = false
+    setStatus("ok")
+  } catch {
+    setStatus("error")
+  }
+}
+
 const save = () => {
   void storage.set("todos", todos)
+  void push()
+}
+
+const pull = async () => {
+  const base = syncBase()
+
+  if (!base || sync.dirty) return
+
+  try {
+    const response = await net.fetch(`${base}/todos`, { timeoutMs: 2500 })
+    const list = JSON.parse(response.text) as unknown
+
+    setStatus("ok")
+
+    if (!Array.isArray(list)) return
+
+    const next = list.map(parseTodo).filter((todo): todo is Todo => todo !== null)
+
+    if (JSON.stringify(next) === JSON.stringify(todos)) return
+
+    todos = next
+    render()
+  } catch {
+    setStatus("error")
+  }
+}
+
+const loadSync = async () => {
+  const saved = await storage.get("sync")
+
+  if (typeof saved === "object" && saved !== null) {
+    const record = saved as Record<string, unknown>
+    const host = typeof record.host === "string" ? record.host : ""
+    const port = typeof record.port === "string" ? record.port : DEFAULT_PORT
+
+    syncSettings = { host, port }
+  }
+
+  setStatus(syncSettings.host ? "idle" : "off")
+}
+
+const saveSync = async (params: { host?: unknown; port?: unknown }) => {
+  const host = typeof params?.host === "string" ? params.host.trim() : ""
+  const port = typeof params?.port === "string" ? params.port.trim() : ""
+
+  syncSettings = { host, port: port || DEFAULT_PORT }
+
+  await storage.set("sync", syncSettings)
+
+  sync.dirty = false
+  setStatus(host ? "idle" : "off")
+
+  await pull()
 }
 
 const render = () => {
@@ -128,18 +229,27 @@ const restore = async () => {
   todos = list.map(parseTodo).filter((todo): todo is Todo => todo !== null)
 
   render()
-  save()
 }
 
 app.on("add-todo", addTodo)
 app.on("toggle-todo", toggleTodo)
 app.on("delete-todo", deleteTodo)
 app.on("set-todo-date", setTodoDate)
+app.on("save-sync", saveSync)
 
 const start = async () => {
+  await loadSync()
   await restore()
+  await pull()
 
   app.run()
+
+  setInterval(() => {
+    if (!syncSettings.host) return
+
+    if (sync.dirty) void push()
+    else void pull()
+  }, 4000)
 }
 
 void start()

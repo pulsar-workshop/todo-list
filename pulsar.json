@@ -14,5 +14,5 @@
       "title": "Todo List"
     }
   ],
-  "permissions": []
+  "permissions": ["net"]
 }
