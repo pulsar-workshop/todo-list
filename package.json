@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pulsar dev",
+    "dev": "QT_QUICK_CONTROLS_STYLE=${QT_QUICK_CONTROLS_STYLE:-Material} pulsar dev",
     "start": "pulsar run",
     "build": "pulsar build",
     "server": "bun server.ts",
