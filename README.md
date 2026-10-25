@@ -46,24 +46,28 @@ Android into `PULSAR_HOME` (about 4.5 GB, one time). The result is
 ## Sync between devices
 
 `bun run server` starts a small Bun server on port 8787 (override with `PORT`,
-set `PASSWORD` to require a bearer token). It stores the state in
-`sync-state.json` next to the script:
+set `PASSWORD` to require a bearer token). It stores everything in `sync.db`
+(SQLite) next to the script:
 
-- `GET /state` returns `{ todos, tags }`;
-- `POST /state` replaces it with the JSON object in the body.
+- `GET /state` returns `{ todos, tags, deletedTodos, deletedTags, files }`;
+- `POST /state` merges the incoming items by `ID`, keeping the newest
+  `updatedAT`; a deleted item can never come back;
+- `GET/PUT/DELETE /file?key=<key>` moves attachment blobs.
 
 Open **Настройки** in the app and enter the server address, port and password. The app
 pushes after every change and pulls every four seconds while there are no
-pending changes, so the last change wins. Leave the address empty to disable
+pending changes. Merging is per object, so a task created on two devices at
+once stays on both. Deletion always wins: once a task is deleted on one
+device, a later edit on another device cannot resurrect it. Pending changes
+and tombstones survive an app restart. Leave the address empty to disable
 syncing.
 
 A phone next to the computer can use `adb reverse tcp:8787 tcp:8787` with the
 host `127.0.0.1`. For a VPS run the server there, open the port, and enter its
 IP or domain in the app.
 
-Attachments are copied into the app data directory. The file picker uses the
-native dialog, which exists on the desktop; on Android the button does nothing
-yet.
+Attachments are copied into the app data directory and uploaded to the server;
+another device downloads them into its own directory when it pulls the task.
 
 ## Permissions
 

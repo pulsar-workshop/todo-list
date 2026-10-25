@@ -5,3 +5,6 @@ dist
 .serena
 build
 sync-state.json
+sync.db
+sync.db-wal
+sync.db-shm

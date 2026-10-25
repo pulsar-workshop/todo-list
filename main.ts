@@ -1,6 +1,5 @@
 import { App, callCapability, dialog, fs, net, paths, storage } from "pulsar"
 
-
 type Subtask = {
   ID: string
   text: string
@@ -12,6 +11,7 @@ type Subtask = {
 type Attachment = {
   name: string
   path: string
+  key?: string
   size?: number
   modifiedAT?: number
 }
@@ -22,6 +22,7 @@ type Todo = {
   description: string
   done: boolean
   createdAT: number
+  updatedAT: number
   completedAT: number | null
   startAT: number | null
   endAT: number | null
@@ -34,12 +35,21 @@ type Tag = {
   ID: string
   name: string
   color: string
+  updatedAT: number
 }
 
 type SyncSettings = {
   host: string
   port: string
   password: string
+}
+
+type RemoteState = {
+  todos: Todo[]
+  tags: Tag[]
+  deletedTodos: string[]
+  deletedTags: string[]
+  files: string[]
 }
 
 const DEFAULT_PORT = "8787"
@@ -51,6 +61,8 @@ const sync = { dirty: false }
 let syncSettings: SyncSettings = { host: "", port: DEFAULT_PORT, password: "" }
 let todos: Todo[] = []
 let tags: Tag[] = []
+let deletedTodos: Record<string, number> = {}
+let deletedTags: Record<string, number> = {}
 
 const newID = () => {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
@@ -88,6 +100,7 @@ const parseAttachment = (value: unknown): Attachment | null => {
 
   const attachment: Attachment = { name: record.name, path: record.path }
 
+  if (typeof record.key === "string") attachment.key = record.key
   if (typeof record.size === "number") attachment.size = record.size
   if (typeof record.modifiedAT === "number") attachment.modifiedAT = record.modifiedAT
 
@@ -118,6 +131,7 @@ const parseTodo = (value: unknown): Todo | null => {
     description: typeof record.description === "string" ? record.description : "",
     done: record.done,
     createdAT: asNumber(record.createdAT ?? record.createdAt) ?? Date.now(),
+    updatedAT: asNumber(record.updatedAT) ?? asNumber(record.createdAT) ?? Date.now(),
     completedAT: asNumber(record.completedAT),
     startAT: asNumber(record.startAT),
     endAT: asNumber(record.endAT),
@@ -136,7 +150,44 @@ const parseTag = (value: unknown): Tag | null => {
   if (typeof record.name !== "string") return null
   if (typeof record.color !== "string") return null
 
-  return { ID: record.ID, name: record.name, color: record.color }
+  return {
+    ID: record.ID,
+    name: record.name,
+    color: record.color,
+    updatedAT: asNumber(record.updatedAT) ?? Date.now(),
+  }
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+const parseDeleted = (value: unknown): Record<string, number> => {
+  if (!isRecord(value)) return {}
+
+  const result: Record<string, number> = {}
+
+  for (const [ID, at] of Object.entries(value)) {
+    if (typeof at === "number" && Number.isFinite(at)) result[ID] = at
+  }
+
+  return result
+}
+
+const baseName = (path: string): string => {
+  return path.split(/[\\/]/).pop() ?? path
+}
+
+const attachmentKey = (todoID: string, file: Attachment): string => {
+  return file.key ?? `${todoID}/${baseName(file.path)}`
+}
+
+const normalizeAttachments = (): void => {
+  for (const todo of todos) {
+    for (const file of todo.files) {
+      if (!file.key) file.key = attachmentKey(todo.ID, file)
+    }
+  }
 }
 
 const syncBase = (): string => {
@@ -145,8 +196,18 @@ const syncBase = (): string => {
   return `http://${syncSettings.host}:${syncSettings.port}`
 }
 
+const persistState = async (): Promise<void> => {
+  await storage.set("todos", todos)
+  await storage.set("tags", tags)
+  await storage.set("deletedTodos", deletedTodos)
+  await storage.set("deletedTags", deletedTags)
+  await storage.set("syncDirty", sync.dirty)
+}
+
 const syncHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = { "content-type": "application/json" }
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  }
 
   if (syncSettings.password) headers.authorization = `Bearer ${syncSettings.password}`
 
@@ -160,6 +221,152 @@ const setStatus = (status: string) => {
   app.store.set("syncPassword", syncSettings.password)
 }
 
+const parseState = (text: string): RemoteState | null => {
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(text) as unknown
+  } catch {
+    return null
+  }
+
+  if (!isRecord(parsed)) return null
+
+  return {
+    todos: Array.isArray(parsed.todos) ? parsed.todos.map(parseTodo).filter((todo): todo is Todo => todo !== null) : [],
+    tags: Array.isArray(parsed.tags) ? parsed.tags.map(parseTag).filter((tag): tag is Tag => tag !== null) : [],
+    deletedTodos: Array.isArray(parsed.deletedTodos)
+      ? parsed.deletedTodos.filter((ID): ID is string => typeof ID === "string")
+      : [],
+    deletedTags: Array.isArray(parsed.deletedTags)
+      ? parsed.deletedTags.filter((ID): ID is string => typeof ID === "string")
+      : [],
+    files: Array.isArray(parsed.files) ? parsed.files.filter((key): key is string => typeof key === "string") : [],
+  }
+}
+
+const applyRemote = (remote: RemoteState): void => {
+  for (const ID of remote.deletedTodos) deletedTodos = { ...deletedTodos, [ID]: deletedTodos[ID] ?? Date.now() }
+  for (const ID of remote.deletedTags) deletedTags = { ...deletedTags, [ID]: deletedTags[ID] ?? Date.now() }
+
+  const localTodos = new Map(todos.map((todo) => [todo.ID, todo]))
+
+  for (const todo of remote.todos) {
+    if (deletedTodos[todo.ID]) continue
+
+    const local = localTodos.get(todo.ID)
+
+    if (!local || todo.updatedAT > local.updatedAT) localTodos.set(todo.ID, todo)
+  }
+
+  todos = [...localTodos.values()].filter((todo) => !deletedTodos[todo.ID])
+
+  const localTags = new Map(tags.map((tag) => [tag.ID, tag]))
+
+  for (const tag of remote.tags) {
+    if (deletedTags[tag.ID]) continue
+
+    const local = localTags.get(tag.ID)
+
+    if (!local || tag.updatedAT > local.updatedAT) localTags.set(tag.ID, tag)
+  }
+
+  tags = [...localTags.values()].filter((tag) => !deletedTags[tag.ID])
+
+  normalizeAttachments()
+}
+
+const attachmentRoot = async (): Promise<string> => {
+  const dirs = await paths.get()
+
+  return `${dirs.data}/attachments`
+}
+
+const uploadFiles = async (base: string, serverFiles: string[]): Promise<void> => {
+  const known = new Set(serverFiles)
+
+  for (const todo of todos) {
+    for (const file of todo.files) {
+      const key = attachmentKey(todo.ID, file)
+
+      file.key = key
+
+      if (known.has(key)) continue
+
+      try {
+        if (!(await fs.exists(file.path))) continue
+
+        const data = await fs.readFile(file.path, "base64")
+        const url = `${base}/file?key=${encodeURIComponent(key)}`
+
+        await net.fetch(url, {
+          method: "PUT",
+          headers: syncHeaders(),
+          body: JSON.stringify({ data }),
+          timeoutMs: 10000,
+        })
+      } catch {}
+    }
+  }
+}
+
+const downloadFiles = async (base: string, serverFiles: string[]): Promise<void> => {
+  const known = new Set(serverFiles)
+  const root = await attachmentRoot()
+
+  for (const todo of todos) {
+    for (const file of todo.files) {
+      const key = attachmentKey(todo.ID, file)
+
+      file.key = key
+
+      if (!known.has(key)) continue
+
+      try {
+        if (await fs.exists(file.path)) continue
+
+        const destination = `${root}/${todo.ID}/${baseName(file.path)}`
+        const url = `${base}/file?key=${encodeURIComponent(key)}`
+        const response = await net.fetch(url, {
+          headers: syncHeaders(),
+          timeoutMs: 10000,
+        })
+
+        if (response.status !== 200) continue
+
+        const parsed = JSON.parse(response.text) as unknown
+
+        if (!isRecord(parsed) || typeof parsed.data !== "string") continue
+
+        await fs.mkdir(`${root}/${todo.ID}`)
+        await fs.writeFile(destination, parsed.data, "base64")
+
+        file.path = destination
+
+        try {
+          const info = await fs.stat(destination)
+
+          file.size = info.size
+        } catch {}
+      } catch {}
+    }
+  }
+}
+
+const deleteRemoteFile = async (key: string): Promise<void> => {
+  const base = syncBase()
+
+  if (!base || !key) return
+
+  try {
+    await net.fetch(`${base}/file?key=${encodeURIComponent(key)}`, {
+      method: "DELETE",
+      headers: syncHeaders(),
+      timeoutMs: 5000,
+    })
+  } catch {}
+}
+
 const push = async () => {
   const base = syncBase()
 
@@ -171,14 +378,30 @@ const push = async () => {
   sync.dirty = true
 
   try {
-    await net.fetch(`${base}/state`, {
+    const response = await net.fetch(`${base}/state`, {
       method: "POST",
       headers: syncHeaders(),
-      body: JSON.stringify({ todos, tags }),
-      timeoutMs: 2500,
+      body: JSON.stringify({
+        todos,
+        tags,
+        deletedTodos: Object.keys(deletedTodos),
+        deletedTags: Object.keys(deletedTags),
+      }),
+      timeoutMs: 5000,
     })
 
+    if (response.status < 200 || response.status >= 300) throw new Error(`sync failed: ${response.status}`)
+
+    const remote = parseState(response.text)
+
+    if (remote) applyRemote(remote)
+
+    await uploadFiles(base, remote?.files ?? [])
+
     sync.dirty = false
+    void storage.set("syncDirty", false)
+    render()
+    void persistState()
     setStatus("ok")
   } catch {
     setStatus("error")
@@ -191,28 +414,23 @@ const pull = async () => {
   if (!base || sync.dirty) return
 
   try {
-    const response = await net.fetch(`${base}/state`, { headers: syncHeaders(), timeoutMs: 2500 })
-    const parsed = JSON.parse(response.text) as unknown
+    const response = await net.fetch(`${base}/state`, {
+      headers: syncHeaders(),
+      timeoutMs: 5000,
+    })
+
+    if (response.status < 200 || response.status >= 300) throw new Error(`sync failed: ${response.status}`)
+
+    const remote = parseState(response.text)
 
     setStatus("ok")
 
-    if (typeof parsed !== "object" || parsed === null) return
+    if (!remote) return
 
-    const record = parsed as Record<string, unknown>
-    const remoteTodos = Array.isArray(record.todos)
-      ? record.todos.map(parseTodo).filter((todo): todo is Todo => todo !== null)
-      : []
-    const remoteTags = Array.isArray(record.tags)
-      ? record.tags.map(parseTag).filter((tag): tag is Tag => tag !== null)
-      : []
-
-    const same = JSON.stringify(remoteTodos) === JSON.stringify(todos) && JSON.stringify(remoteTags) === JSON.stringify(tags)
-
-    if (same) return
-
-    todos = remoteTodos
-    tags = remoteTags
+    applyRemote(remote)
+    await downloadFiles(base, remote.files)
     render()
+    void persistState()
   } catch {
     setStatus("error")
   }
@@ -245,7 +463,7 @@ const saveSync = async (params: { host?: unknown; port?: unknown; password?: unk
   sync.dirty = false
   setStatus(host ? "idle" : "off")
 
-  await pull()
+  if (host) await push()
 }
 
 const render = () => {
@@ -255,8 +473,9 @@ const render = () => {
 }
 
 const save = () => {
-  void storage.set("todos", todos)
-  void storage.set("tags", tags)
+  sync.dirty = true
+  void storage.set("syncDirty", true)
+  void persistState()
   void push()
 }
 
@@ -273,6 +492,7 @@ const addTodo = (params: { text?: unknown }) => {
       description: "",
       done: false,
       createdAT: Date.now(),
+      updatedAT: Date.now(),
       completedAT: null,
       startAT: null,
       endAT: null,
@@ -300,6 +520,9 @@ const saveTask = (params: { json?: unknown; task?: unknown }) => {
   const task = parseTodo(value)
 
   if (!task) return
+  if (deletedTodos[task.ID]) return
+
+  task.updatedAT = Date.now()
 
   const exists = todos.some((todo) => todo.ID === task.ID)
 
@@ -326,6 +549,7 @@ const toggleTodo = (params: { ID?: unknown }) => {
     return {
       ...todo,
       done,
+      updatedAT: Date.now(),
       completedAT: done ? Date.now() : null,
     }
   })
@@ -339,6 +563,7 @@ const deleteTodo = async (params: { ID?: unknown }) => {
 
   if (!ID) return
 
+  deletedTodos = { ...deletedTodos, [ID]: Date.now() }
   todos = todos.filter((todo) => todo.ID !== ID)
 
   render()
@@ -364,7 +589,7 @@ const addTag = (params: { name?: unknown; color?: unknown }) => {
     return
   }
 
-  const tag: Tag = { ID: newID(), name, color }
+  const tag: Tag = { ID: newID(), name, color, updatedAT: Date.now() }
 
   tags = [...tags, tag]
 
@@ -414,7 +639,11 @@ const pickFiles = async (params: { ID?: unknown }) => {
         modifiedAT = info.mtimeMs
       } catch {}
 
-      const attachment: Attachment = { name, path: destination }
+      const attachment: Attachment = {
+        name,
+        path: destination,
+        key: `${ID}/${baseName(destination)}`,
+      }
 
       if (size !== undefined) attachment.size = size
       if (modifiedAT !== undefined) attachment.modifiedAT = modifiedAT
@@ -425,7 +654,9 @@ const pickFiles = async (params: { ID?: unknown }) => {
 
   if (added.length === 0) return
 
-  todos = todos.map((todo) => (todo.ID === ID ? { ...todo, files: [...todo.files, ...added] } : todo))
+  todos = todos.map((todo) =>
+    todo.ID === ID ? { ...todo, updatedAT: Date.now(), files: [...todo.files, ...added] } : todo,
+  )
 
   render()
   save()
@@ -439,28 +670,49 @@ const removeFile = (params: { ID?: unknown; path?: unknown }) => {
 
   if (!ID || !path) return
 
+  const target = todos.find((todo) => todo.ID === ID)
+  const file = target?.files.find((item) => item.path === path)
+  const key = file ? attachmentKey(ID, file) : ""
+
   todos = todos.map((todo) => {
     if (todo.ID !== ID) return todo
 
-    return { ...todo, files: todo.files.filter((file) => file.path !== path) }
+    return {
+      ...todo,
+      updatedAT: Date.now(),
+      files: todo.files.filter((item) => item.path !== path),
+    }
   })
 
   render()
   save()
 
   void fs.remove(path).catch(() => false)
+  void deleteRemoteFile(key)
 }
 
 const restore = async () => {
   const savedTodos = await storage.get("todos")
   const savedTags = await storage.get("tags")
+  const savedDeletedTodos = await storage.get("deletedTodos")
+  const savedDeletedTags = await storage.get("deletedTags")
+  const savedDirty = await storage.get("syncDirty")
+
+  deletedTodos = parseDeleted(savedDeletedTodos)
+  deletedTags = parseDeleted(savedDeletedTags)
+  sync.dirty = savedDirty === true
 
   todos = (Array.isArray(savedTodos) ? savedTodos : [])
     .map(parseTodo)
     .filter((todo): todo is Todo => todo !== null)
+    .filter((todo) => !deletedTodos[todo.ID])
 
-  tags = (Array.isArray(savedTags) ? savedTags : []).map(parseTag).filter((tag): tag is Tag => tag !== null)
+  tags = (Array.isArray(savedTags) ? savedTags : [])
+    .map(parseTag)
+    .filter((tag): tag is Tag => tag !== null)
+    .filter((tag) => !deletedTags[tag.ID])
 
+  normalizeAttachments()
   render()
 }
 
@@ -500,7 +752,9 @@ app.on("back-pressed", () => {
 const start = async () => {
   await loadSync()
   await restore()
-  await pull()
+
+  if (sync.dirty) await push()
+  else await pull()
 
   app.run()
 
