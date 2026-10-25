@@ -26,6 +26,55 @@ Item {
     signal exportFileRequested(string path, string name)
     signal openFileRequested(string path)
 
+    Connections {
+        target: Qt.inputMethod
+
+        function onVisibleChanged() {
+            if (!Qt.inputMethod.visible) {
+                editorHideTimer.restart()
+                return
+            }
+
+            editorScrollTimer.restart()
+        }
+
+        function onKeyboardRectangleChanged() {
+            if (!Qt.inputMethod.visible) return
+
+            Qt.callLater(editor.ensureFocusedVisible)
+            editorScrollTimer.restart()
+        }
+    }
+
+    Connections {
+        target: editor.Window.window
+
+        function onActiveFocusItemChanged() {
+            if (!Qt.inputMethod.visible) return
+
+            Qt.callLater(editor.ensureFocusedVisible)
+            editorScrollTimer.restart()
+        }
+    }
+
+    Timer {
+        id: editorHideTimer
+
+        interval: 250
+
+        onTriggered: {
+            if (!Qt.inputMethod.visible && editor.visible) editor.forceActiveFocus()
+        }
+    }
+
+    Timer {
+        id: editorScrollTimer
+
+        interval: 250
+
+        onTriggered: editor.ensureFocusedVisible()
+    }
+
     function openAttachment(file) {
         if (isImage(file.name)) {
             imageViewer.source = "file://" + file.path
@@ -106,10 +155,43 @@ Item {
         completedInput.text = formatTime(draft.completedAT)
 
         visible = true
-        titleInput.forceActiveFocus()
+    }
+
+    function ensureFocusedVisible() {
+        if (!Qt.inputMethod.visible) return
+
+        const item = editor.Window.activeFocusItem
+        const flick = contentScroll.contentItem
+
+        if (!item || !flick) return
+
+        const content = flick.contentItem
+
+        if (!content) return
+
+        const pos = item.mapToItem(content, 0, 0)
+        const margin = 12
+        const top = pos.y
+        const bottom = top + item.height
+
+        if (top < flick.contentY + margin) {
+            flick.contentY = Math.max(0, top - margin)
+            return
+        }
+
+        if (bottom > flick.contentY + flick.height - margin) {
+            flick.contentY = bottom - flick.height + margin
+        }
     }
 
     function close() {
+        titleInput.focus = false
+        descriptionInput.focus = false
+        startInput.focus = false
+        endInput.focus = false
+        tagInput.focus = false
+        subtaskInput.focus = false
+        editor.forceActiveFocus()
         visible = false
     }
 
@@ -207,10 +289,32 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
+                contentWidth: availableWidth - 16
+
+                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+                Binding {
+                    target: contentScroll.contentItem
+                    property: "flickableDirection"
+                    value: Flickable.VerticalFlick
+                    when: contentScroll.contentItem !== null
+                }
+
+                Binding {
+                    target: contentScroll.contentItem
+                    property: "boundsBehavior"
+                    value: Flickable.StopAtBounds
+                    when: contentScroll.contentItem !== null
+                }
 
                 ColumnLayout {
-                    width: contentScroll.availableWidth
+                    width: contentScroll.availableWidth - 16
                     spacing: 8
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 8
+                    }
 
                     TextField {
                         id: titleInput
@@ -227,7 +331,7 @@ Item {
                         placeholderText: "Описание"
                         wrapMode: TextArea.Wrap
                         font.pixelSize: 14
-                        implicitHeight: 72
+                        implicitHeight: Math.max(72, contentHeight + topPadding + bottomPadding)
                     }
 
                     Label {
@@ -555,6 +659,11 @@ Item {
                     Button {
                         text: "Прикрепить файл"
                         onClicked: editor.pickFilesRequested(editor.draft.ID)
+                    }
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 12
                     }
                 }
             }

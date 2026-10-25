@@ -90,16 +90,6 @@ ApplicationWindow {
                 placeholderText: "Что нужно сделать?"
                 font.pixelSize: 16
                 onAccepted: window.addTask()
-                onActiveFocusChanged: {
-                    if (activeFocus) Qt.inputMethod.show()
-                }
-
-                TapHandler {
-                    onTapped: {
-                        input.forceActiveFocus()
-                        Qt.inputMethod.show()
-                    }
-                }
             }
 
             Button {
@@ -250,6 +240,16 @@ ApplicationWindow {
         target: Qt.inputMethod
 
         function onVisibleChanged() {
+            if (!Qt.inputMethod.visible) keyboardHideTimer.restart()
+        }
+    }
+
+    Timer {
+        id: keyboardHideTimer
+
+        interval: 250
+
+        onTriggered: {
             if (!Qt.inputMethod.visible && input.activeFocus) input.focus = false
         }
     }
@@ -259,6 +259,18 @@ ApplicationWindow {
 
         function onAppEvent(event, payload) {
             if (!payload) return
+
+            if (event === "back-pressed") {
+                if (editor.visible) {
+                    if (!editor.closeViewer()) editor.close()
+
+                    return
+                }
+
+                if (syncDialog.visible) syncDialog.close()
+
+                return
+            }
 
             if (event === "tag-added") editor.attachTag(payload.tag)
             if (event === "task-files" && editor.draft && payload.ID === editor.draft.ID) editor.attachFiles(payload.files)
@@ -278,6 +290,7 @@ ApplicationWindow {
         padding: 16
 
         function openDialog() {
+            input.focus = false
             hostInput.text = Store.syncHost ?? ""
             portInput.text = Store.syncPort ?? "8787"
             passwordInput.text = Store.syncPassword ?? ""
@@ -378,7 +391,6 @@ ApplicationWindow {
             }
         }
 
-        onOpened: hostInput.forceActiveFocus()
     }
 
     function syncLabel() {
@@ -408,6 +420,7 @@ ApplicationWindow {
     }
 
     function editTask(todo) {
+        input.focus = false
         editor.openFor(todo, Store.tags ?? [])
     }
 

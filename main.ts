@@ -493,6 +493,9 @@ app.on("open-file", async (params: { path?: unknown }) => {
   } catch {}
 })
 app.on("save-sync", saveSync)
+app.on("back-pressed", () => {
+  app.send("back-pressed", {})
+})
 
 const start = async () => {
   await loadSync()
