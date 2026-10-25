@@ -849,6 +849,21 @@ app.on("open-file", async (params: { path?: unknown }) => {
 
   try {
     await callCapability("fs.open", { path })
+
+    return
+  } catch {}
+
+  if (typeof Bun === "undefined" || typeof process === "undefined") return
+
+  const command =
+    process.platform === "darwin"
+      ? ["open", path]
+      : process.platform === "win32"
+        ? ["cmd", "/c", "start", "", path]
+        : ["xdg-open", path]
+
+  try {
+    Bun.spawn(command, { stdout: "ignore", stderr: "ignore" })
   } catch {}
 })
 app.on("save-sync", saveSync)
