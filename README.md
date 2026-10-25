@@ -54,6 +54,9 @@ set `PASSWORD` to require a bearer token). It stores everything in `sync.db`
   `updatedAT`; a deleted item can never come back;
 - `GET/PUT/DELETE /file?key=<key>` moves attachment blobs.
 
+The schema lives in `db/schema.ts`; `bun run db:generate` regenerates the
+migrations in `drizzle/`, which the server applies on start.
+
 Open **Настройки** in the app and enter the server address, port and password. The app
 pushes after every change and pulls every four seconds while there are no
 pending changes. Merging is per object, so a task created on two devices at
