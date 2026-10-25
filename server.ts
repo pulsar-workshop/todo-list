@@ -1,10 +1,14 @@
 import { Database } from "bun:sqlite"
 import { drizzle } from "drizzle-orm/bun-sqlite"
 import { eq, like, sql } from "drizzle-orm"
-import { existsSync, readFileSync } from "fs"
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs"
+import { tmpdir } from "os"
 import { dirname, isAbsolute, join } from "path"
 import { migrate } from "./db/migrate.ts"
 import { files, tags, todos } from "./db/schema.ts"
+
+const THUMB_PREFIX = "thumb:"
+const VIDEO_PATTERN = /\.(mp4|m4v|mov|webm|mkv|avi|3gp)$/i
 
 const projectDir = import.meta.dir
 const standalone = !existsSync(join(projectDir, "server.ts"))
@@ -57,6 +61,48 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+const isVideo = (key: string): boolean => {
+  return VIDEO_PATTERN.test(key)
+}
+
+const thumbKey = (key: string): string => {
+  return `${THUMB_PREFIX}${key}`
+}
+
+const saveThumb = (key: string, data: Buffer): void => {
+  db.insert(files)
+    .values({ key: thumbKey(key), data, updatedAT: Date.now() })
+    .onConflictDoUpdate({ target: files.key, set: { data, updatedAT: Date.now() } })
+    .run()
+}
+
+const generateThumb = (key: string, data: Uint8Array): boolean => {
+  if (!isVideo(key)) return false
+
+  const dir = mkdtempSync(join(tmpdir(), "pulsar-thumb-"))
+  const input = join(dir, "input")
+  const output = join(dir, "thumb.jpg")
+
+  try {
+    writeFileSync(input, data)
+
+    const result = Bun.spawnSync(
+      ["ffmpeg", "-y", "-ss", "0", "-i", input, "-frames:v", "1", "-vf", "scale=480:-1", "-q:v", "5", output],
+      { stdout: "ignore", stderr: "ignore" },
+    )
+
+    if (result.exitCode !== 0 || !existsSync(output)) return false
+
+    saveThumb(key, readFileSync(output))
+
+    return true
+  } catch {
+    return false
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+}
+
 const asUpdated = (value: unknown): number => {
   return typeof value === "number" && Number.isFinite(value) ? value : 0
 }
@@ -91,7 +137,9 @@ const state = (): State => {
       .where(eq(tags.deleted, 1))
       .all()
       .map((row) => row.ID),
-    files: fileRows.map((row) => row.key),
+    files: fileRows
+      .map((row) => row.key)
+      .filter((key) => !key.startsWith(THUMB_PREFIX)),
   }
 }
 
@@ -142,6 +190,9 @@ const server = Bun.serve({
           .run()
         tx.delete(files)
           .where(like(files.key, `${ID}/%`))
+          .run()
+        tx.delete(files)
+          .where(like(files.key, `${THUMB_PREFIX}${ID}/%`))
           .run()
       }
 
@@ -219,7 +270,16 @@ async function handleFile(request: Request, url: URL): Promise<Response> {
   if (!key) return new Response("expected key", { status: 400 })
 
   if (request.method === "GET") {
-    const row = db.select({ data: files.data }).from(files).where(eq(files.key, key)).get()
+    let row = db.select({ data: files.data }).from(files).where(eq(files.key, key)).get()
+
+    if (!row && key.startsWith(THUMB_PREFIX)) {
+      const mainKey = key.slice(THUMB_PREFIX.length)
+      const main = db.select({ data: files.data }).from(files).where(eq(files.key, mainKey)).get()
+
+      if (main && generateThumb(mainKey, main.data)) {
+        row = db.select({ data: files.data }).from(files).where(eq(files.key, key)).get()
+      }
+    }
 
     if (!row) return new Response("not found", { status: 404 })
 
@@ -240,11 +300,14 @@ async function handleFile(request: Request, url: URL): Promise<Response> {
       .onConflictDoUpdate({ target: files.key, set: { data, updatedAT: Date.now() } })
       .run()
 
+    generateThumb(key, data)
+
     return json({ ok: true, size: data.byteLength })
   }
 
   if (request.method === "DELETE") {
     db.delete(files).where(eq(files.key, key)).run()
+    db.delete(files).where(eq(files.key, thumbKey(key))).run()
 
     return json({ ok: true })
   }
