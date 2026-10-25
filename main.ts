@@ -136,6 +136,10 @@ app.on("toggle-todo", toggleTodo)
 app.on("delete-todo", deleteTodo)
 app.on("set-todo-date", setTodoDate)
 
-await restore()
+const start = async () => {
+  await restore()
 
-app.run()
+  app.run()
+}
+
+void start()
