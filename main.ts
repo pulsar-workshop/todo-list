@@ -12,6 +12,8 @@ type Subtask = {
 type Attachment = {
   name: string
   path: string
+  size?: number
+  modifiedAT?: number
 }
 
 type Todo = {
@@ -84,7 +86,12 @@ const parseAttachment = (value: unknown): Attachment | null => {
   if (typeof record.name !== "string") return null
   if (typeof record.path !== "string") return null
 
-  return { name: record.name, path: record.path }
+  const attachment: Attachment = { name: record.name, path: record.path }
+
+  if (typeof record.size === "number") attachment.size = record.size
+  if (typeof record.modifiedAT === "number") attachment.modifiedAT = record.modifiedAT
+
+  return attachment
 }
 
 const parseTodo = (value: unknown): Todo | null => {
@@ -397,7 +404,22 @@ const pickFiles = async (params: { ID?: unknown }) => {
     try {
       await fs.copy(source, destination)
 
-      added.push({ name, path: destination })
+      let size: number | undefined
+      let modifiedAT: number | undefined
+
+      try {
+        const info = await fs.stat(destination)
+
+        size = info.size
+        modifiedAT = info.mtimeMs
+      } catch {}
+
+      const attachment: Attachment = { name, path: destination }
+
+      if (size !== undefined) attachment.size = size
+      if (modifiedAT !== undefined) attachment.modifiedAT = modifiedAT
+
+      added.push(attachment)
     } catch {}
   }
 

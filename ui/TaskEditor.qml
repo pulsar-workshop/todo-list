@@ -23,6 +23,14 @@ Item {
     signal addTagRequested(string name, string color)
     signal pickFilesRequested(string ID)
     signal removeFileRequested(string ID, string path)
+    function fileMeta(file) {
+        const parts = []
+
+        if (file.size) parts.push(Math.max(1, Math.round(file.size / 1024)) + " КБ")
+        if (file.modifiedAT) parts.push(Qt.formatDateTime(new Date(file.modifiedAT), "dd.MM.yyyy"))
+
+        return parts.join(" · ")
+    }
 
     function formatTime(value) {
         if (value === null || value === undefined) return ""
