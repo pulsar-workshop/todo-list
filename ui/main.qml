@@ -36,16 +36,16 @@ ApplicationWindow {
                     color: "#8e8e96"
                     font.pixelSize: 14
                 }
+
+                Label {
+                    text: window.syncLabel()
+                    color: window.syncColor()
+                    font.pixelSize: 12
+                }
             }
 
             Item {
                 Layout.fillWidth: true
-            }
-
-            Label {
-                text: window.syncLabel()
-                color: window.syncColor()
-                font.pixelSize: 12
             }
 
             Button {
