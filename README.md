@@ -7,7 +7,7 @@ Add a task, mark it done, or delete it. Tasks are persisted in the app data dire
 ## Requirements
 
 - [Bun](https://bun.sh) (the Pulsar CLI runs on Bun)
-- The Pulsar toolchain: run `pulsar install` once
+- The Pulsar toolchain 1.0.0 or newer: run `pulsar install` once
 
 ## Develop
 
