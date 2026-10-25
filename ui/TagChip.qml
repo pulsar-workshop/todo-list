@@ -28,8 +28,9 @@ Rectangle {
         elide: Text.ElideRight
     }
 
-    TapHandler {
+    MouseArea {
+        anchors.fill: parent
         enabled: chip.interactive
-        onTapped: chip.clicked()
+        onClicked: chip.clicked()
     }
 }

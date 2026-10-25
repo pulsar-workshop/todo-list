@@ -302,6 +302,9 @@ Item {
             }
         }
 
+        TapHandler {
+        }
+
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 16
