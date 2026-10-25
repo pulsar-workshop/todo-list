@@ -12,6 +12,7 @@ type Attachment = {
   name: string
   path: string
   key?: string
+  thumb?: string
   size?: number
   modifiedAT?: number
 }
@@ -101,6 +102,7 @@ const parseAttachment = (value: unknown): Attachment | null => {
   const attachment: Attachment = { name: record.name, path: record.path }
 
   if (typeof record.key === "string") attachment.key = record.key
+  if (typeof record.thumb === "string") attachment.thumb = record.thumb
   if (typeof record.size === "number") attachment.size = record.size
   if (typeof record.modifiedAT === "number") attachment.modifiedAT = record.modifiedAT
 
@@ -182,12 +184,29 @@ const attachmentKey = (todoID: string, file: Attachment): string => {
   return file.key ?? `${todoID}/${baseName(file.path)}`
 }
 
-const normalizeAttachments = (): void => {
+const VIDEO_PATTERN = /\.(mp4|m4v|mov|webm|mkv|avi|3gp)$/i
+
+const isVideo = (name: string): boolean => {
+  return VIDEO_PATTERN.test(name)
+}
+
+const thumbPath = (root: string, todoID: string, file: Attachment): string => {
+  return `${root}/${todoID}/.thumb-${baseName(file.path)}.jpg`
+}
+
+const normalizeAttachments = (): boolean => {
+  let changed = false
+
   for (const todo of todos) {
     for (const file of todo.files) {
-      if (!file.key) file.key = attachmentKey(todo.ID, file)
+      if (!file.key) {
+        file.key = attachmentKey(todo.ID, file)
+        changed = true
+      }
     }
   }
+
+  return changed
 }
 
 const syncBase = (): string => {
@@ -245,9 +264,22 @@ const parseState = (text: string): RemoteState | null => {
   }
 }
 
-const applyRemote = (remote: RemoteState): void => {
-  for (const ID of remote.deletedTodos) deletedTodos = { ...deletedTodos, [ID]: deletedTodos[ID] ?? Date.now() }
-  for (const ID of remote.deletedTags) deletedTags = { ...deletedTags, [ID]: deletedTags[ID] ?? Date.now() }
+const applyRemote = (remote: RemoteState): boolean => {
+  let changed = false
+
+  for (const ID of remote.deletedTodos) {
+    if (deletedTodos[ID] !== undefined) continue
+
+    deletedTodos = { ...deletedTodos, [ID]: Date.now() }
+    changed = true
+  }
+
+  for (const ID of remote.deletedTags) {
+    if (deletedTags[ID] !== undefined) continue
+
+    deletedTags = { ...deletedTags, [ID]: Date.now() }
+    changed = true
+  }
 
   const localTodos = new Map(todos.map((todo) => [todo.ID, todo]))
 
@@ -256,10 +288,17 @@ const applyRemote = (remote: RemoteState): void => {
 
     const local = localTodos.get(todo.ID)
 
-    if (!local || todo.updatedAT > local.updatedAT) localTodos.set(todo.ID, todo)
+    if (!local || todo.updatedAT > local.updatedAT) {
+      localTodos.set(todo.ID, todo)
+      changed = true
+    }
   }
 
-  todos = [...localTodos.values()].filter((todo) => !deletedTodos[todo.ID])
+  const nextTodos = [...localTodos.values()].filter((todo) => !deletedTodos[todo.ID])
+
+  if (nextTodos.length !== todos.length) changed = true
+
+  todos = nextTodos
 
   const localTags = new Map(tags.map((tag) => [tag.ID, tag]))
 
@@ -268,12 +307,21 @@ const applyRemote = (remote: RemoteState): void => {
 
     const local = localTags.get(tag.ID)
 
-    if (!local || tag.updatedAT > local.updatedAT) localTags.set(tag.ID, tag)
+    if (!local || tag.updatedAT > local.updatedAT) {
+      localTags.set(tag.ID, tag)
+      changed = true
+    }
   }
 
-  tags = [...localTags.values()].filter((tag) => !deletedTags[tag.ID])
+  const nextTags = [...localTags.values()].filter((tag) => !deletedTags[tag.ID])
 
-  normalizeAttachments()
+  if (nextTags.length !== tags.length) changed = true
+
+  tags = nextTags
+
+  if (normalizeAttachments()) changed = true
+
+  return changed
 }
 
 const attachmentRoot = async (): Promise<string> => {
@@ -282,75 +330,129 @@ const attachmentRoot = async (): Promise<string> => {
   return `${dirs.data}/attachments`
 }
 
-const uploadFiles = async (base: string, serverFiles: string[]): Promise<void> => {
-  const known = new Set(serverFiles)
+const ensureThumb = async (base: string, root: string, todo: Todo, file: Attachment): Promise<boolean> => {
+  if (!isVideo(file.name)) return false
 
-  for (const todo of todos) {
-    for (const file of todo.files) {
-      const key = attachmentKey(todo.ID, file)
+  const local = thumbPath(root, todo.ID, file)
 
-      file.key = key
+  try {
+    if (file.thumb && (await fs.exists(file.thumb))) return false
 
-      if (known.has(key)) continue
+    if (await fs.exists(local)) {
+      file.thumb = local
 
-      try {
-        if (!(await fs.exists(file.path))) continue
-
-        const data = await fs.readFile(file.path, "base64")
-        const url = `${base}/file?key=${encodeURIComponent(key)}`
-
-        await net.fetch(url, {
-          method: "PUT",
-          headers: syncHeaders(),
-          body: JSON.stringify({ data }),
-          timeoutMs: 10000,
-        })
-      } catch {}
+      return true
     }
+
+    const key = attachmentKey(todo.ID, file)
+    const url = `${base}/file?key=${encodeURIComponent(`thumb:${key}`)}`
+    const response = await net.fetch(url, { headers: syncHeaders(), timeoutMs: 10000 })
+
+    if (response.status !== 200) return false
+
+    const parsed = JSON.parse(response.text) as unknown
+
+    if (!isRecord(parsed) || typeof parsed.data !== "string") return false
+
+    await fs.mkdir(`${root}/${todo.ID}`)
+    await fs.writeFile(local, parsed.data, "base64")
+
+    file.thumb = local
+
+    return true
+  } catch {
+    return false
   }
 }
 
-const downloadFiles = async (base: string, serverFiles: string[]): Promise<void> => {
+const uploadFiles = async (base: string, serverFiles: string[]): Promise<boolean> => {
   const known = new Set(serverFiles)
   const root = await attachmentRoot()
+
+  let changed = false
 
   for (const todo of todos) {
     for (const file of todo.files) {
       const key = attachmentKey(todo.ID, file)
 
-      file.key = key
+      if (!file.key) {
+        file.key = key
+        changed = true
+      }
 
-      if (!known.has(key)) continue
-
-      try {
-        if (await fs.exists(file.path)) continue
-
-        const destination = `${root}/${todo.ID}/${baseName(file.path)}`
-        const url = `${base}/file?key=${encodeURIComponent(key)}`
-        const response = await net.fetch(url, {
-          headers: syncHeaders(),
-          timeoutMs: 10000,
-        })
-
-        if (response.status !== 200) continue
-
-        const parsed = JSON.parse(response.text) as unknown
-
-        if (!isRecord(parsed) || typeof parsed.data !== "string") continue
-
-        await fs.mkdir(`${root}/${todo.ID}`)
-        await fs.writeFile(destination, parsed.data, "base64")
-
-        file.path = destination
-
+      if (!known.has(key)) {
         try {
-          const info = await fs.stat(destination)
+          if (await fs.exists(file.path)) {
+            const data = await fs.readFile(file.path, "base64")
+            const url = `${base}/file?key=${encodeURIComponent(key)}`
 
-          file.size = info.size
+            await net.fetch(url, {
+              method: "PUT",
+              headers: syncHeaders(),
+              body: JSON.stringify({ data }),
+              timeoutMs: 10000,
+            })
+          }
         } catch {}
-      } catch {}
+      }
+
+      if (await ensureThumb(base, root, todo, file)) changed = true
     }
   }
+
+  return changed
+}
+
+const downloadFiles = async (base: string, serverFiles: string[]): Promise<boolean> => {
+  const known = new Set(serverFiles)
+  const root = await attachmentRoot()
+
+  let changed = false
+
+  for (const todo of todos) {
+    for (const file of todo.files) {
+      const key = attachmentKey(todo.ID, file)
+
+      if (!file.key) {
+        file.key = key
+        changed = true
+      }
+
+      if (known.has(key) && !(await fs.exists(file.path).catch(() => true))) {
+        try {
+          const destination = `${root}/${todo.ID}/${baseName(file.path)}`
+          const url = `${base}/file?key=${encodeURIComponent(key)}`
+          const response = await net.fetch(url, {
+            headers: syncHeaders(),
+            timeoutMs: 10000,
+          })
+
+          if (response.status === 200) {
+            const parsed = JSON.parse(response.text) as unknown
+
+            if (isRecord(parsed) && typeof parsed.data === "string") {
+              await fs.mkdir(`${root}/${todo.ID}`)
+              await fs.writeFile(destination, parsed.data, "base64")
+
+              file.path = destination
+
+              try {
+                const info = await fs.stat(destination)
+
+                file.size = info.size
+              } catch {}
+
+              changed = true
+            }
+          }
+        } catch {}
+      }
+
+      if (known.has(key) && (await ensureThumb(base, root, todo, file))) changed = true
+    }
+  }
+
+  return changed
 }
 
 const deleteRemoteFile = async (key: string): Promise<void> => {
@@ -394,13 +496,15 @@ const push = async () => {
 
     const remote = parseState(response.text)
 
-    if (remote) applyRemote(remote)
+    let changed = remote ? applyRemote(remote) : false
 
-    await uploadFiles(base, remote?.files ?? [])
+    if (await uploadFiles(base, remote?.files ?? [])) changed = true
 
     sync.dirty = false
     void storage.set("syncDirty", false)
-    render()
+
+    if (changed) render()
+
     void persistState()
     setStatus("ok")
   } catch {
@@ -427,10 +531,13 @@ const pull = async () => {
 
     if (!remote) return
 
-    applyRemote(remote)
-    await downloadFiles(base, remote.files)
-    render()
-    void persistState()
+    let changed = applyRemote(remote)
+
+    if (await downloadFiles(base, remote.files)) changed = true
+
+    if (changed) render()
+
+    if (changed) void persistState()
   } catch {
     setStatus("error")
   }

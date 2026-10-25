@@ -121,6 +121,10 @@ Item {
         return /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(name)
     }
 
+    function isVideo(name) {
+        return /\.(mp4|m4v|mov|webm|mkv|avi|3gp)$/i.test(name)
+    }
+
     function fileMeta(file) {
         const parts = []
 
@@ -298,14 +302,6 @@ Item {
         anchors.centerIn: parent
         radius: 16
         color: "#ffffff"
-        scale: editor.shown ? 1 : 0.9
-
-        Behavior on scale {
-            NumberAnimation {
-                duration: 220
-                easing.type: Easing.OutQuint
-            }
-        }
 
         MouseArea {
             anchors.fill: parent
@@ -638,14 +634,48 @@ Item {
                             Layout.fillWidth: true
                             spacing: 6
 
-                            Image {
-                                visible: editor.isImage(modelData.name)
-                                source: visible ? "file://" + modelData.path : ""
+                            Item {
                                 Layout.preferredWidth: 44
                                 Layout.preferredHeight: 44
-                                fillMode: Image.PreserveAspectCrop
-                                asynchronous: true
-                                cache: true
+                                visible: editor.isImage(modelData.name) || editor.isVideo(modelData.name)
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: 6
+                                    color: "#e5e7eb"
+                                    visible: !preview.visible
+                                }
+
+                                Image {
+                                    id: preview
+
+                                    anchors.fill: parent
+                                    visible: source !== ""
+                                    fillMode: Image.PreserveAspectCrop
+                                    asynchronous: true
+                                    cache: true
+                                    source: {
+                                        if (editor.isImage(modelData.name)) return "file://" + modelData.path
+
+                                        return modelData.thumb ? "file://" + modelData.thumb : ""
+                                    }
+                                }
+
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    width: 24
+                                    height: 24
+                                    radius: 12
+                                    color: "#99000000"
+                                    visible: editor.isVideo(modelData.name)
+
+                                    Label {
+                                        anchors.centerIn: parent
+                                        text: "▶"
+                                        color: "#ffffff"
+                                        font.pixelSize: 12
+                                    }
+                                }
 
                                 TapHandler {
                                     onTapped: editor.openAttachment(modelData)
@@ -786,6 +816,14 @@ Item {
         x: (Overlay.overlay.width - width) / 2
         y: Math.max(8, (Overlay.overlay.height - height) / 2)
         padding: 16
+
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 120 }
+        }
+
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 120 }
+        }
 
         property string target: "end"
         property int viewYear: 0
@@ -1081,6 +1119,14 @@ Item {
         x: (Overlay.overlay.width - width) / 2
         y: Math.max(8, (Overlay.overlay.height - height) / 2)
         padding: 16
+
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 120 }
+        }
+
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 120 }
+        }
 
         property string taskID: ""
 

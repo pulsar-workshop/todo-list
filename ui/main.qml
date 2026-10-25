@@ -340,6 +340,14 @@ ApplicationWindow {
         y: Math.max(8, (Overlay.overlay.height - height) / 2 - (Qt.inputMethod.visible ? Qt.inputMethod.keyboardRectangle.height / 2 : 0))
         padding: 16
 
+        enter: Transition {
+            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 120 }
+        }
+
+        exit: Transition {
+            NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 120 }
+        }
+
         function openDialog() {
             input.focus = false
             hostInput.text = Store.syncHost ?? ""
@@ -472,7 +480,7 @@ ApplicationWindow {
 
     function editTask(todo) {
         input.focus = false
-        editor.openFor(todo, Store.tags ?? [])
+        Qt.callLater(() => editor.openFor(todo, Store.tags ?? []))
     }
 
 }
