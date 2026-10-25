@@ -6,6 +6,7 @@
     "dev": "pulsar dev",
     "start": "pulsar run",
     "build": "pulsar build",
+    "server": "bun server.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

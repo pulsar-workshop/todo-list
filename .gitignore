@@ -4,3 +4,4 @@ dist
 .DS_Store
 .serena
 build
+sync-state.json
