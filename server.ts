@@ -1,13 +1,41 @@
 import { Database } from "bun:sqlite"
 import { drizzle } from "drizzle-orm/bun-sqlite"
-import { migrate } from "drizzle-orm/bun-sqlite/migrator"
 import { eq, like, sql } from "drizzle-orm"
-import { join } from "path"
+import { existsSync, readFileSync } from "fs"
+import { dirname, isAbsolute, join } from "path"
+import { migrate } from "./db/migrate.ts"
 import { files, tags, todos } from "./db/schema.ts"
+
+const projectDir = import.meta.dir
+const standalone = !existsSync(join(projectDir, "server.ts"))
+const baseDir = standalone ? dirname(process.execPath) : projectDir
+
+const loadEnv = (path: string): void => {
+  if (!existsSync(path)) return
+
+  for (const line of readFileSync(path, "utf8").split("\n")) {
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/)
+
+    if (!match) continue
+
+    const key = match[1]!
+    const raw = match[2]!
+
+    if (process.env[key] !== undefined) continue
+
+    const quoted = (raw.startsWith('"') && raw.endsWith('"')) || (raw.startsWith("'") && raw.endsWith("'"))
+
+    process.env[key] = quoted ? raw.slice(1, -1) : raw
+  }
+}
+
+loadEnv(join(baseDir, ".env"))
+loadEnv(join(process.cwd(), ".env"))
 
 const port = Number(process.env.PORT ?? 8787)
 const password = process.env.PASSWORD ?? ""
-const dbPath = join(import.meta.dir, process.env.DB ?? "sync.db")
+const dbName = process.env.DB ?? "sync.db"
+const dbPath = isAbsolute(dbName) ? dbName : join(baseDir, dbName)
 
 type State = {
   todos: unknown[]
@@ -23,7 +51,7 @@ sqlite.run("PRAGMA busy_timeout = 5000")
 
 const db = drizzle(sqlite)
 
-migrate(db, { migrationsFolder: join(import.meta.dir, "drizzle") })
+migrate(sqlite)
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -223,5 +251,17 @@ async function handleFile(request: Request, url: URL): Promise<Response> {
 
   return new Response("method not allowed", { status: 405 })
 }
+
+const shutdown = (): void => {
+  try {
+    sqlite.run("PRAGMA wal_checkpoint(TRUNCATE)")
+    sqlite.close()
+  } catch {}
+
+  process.exit(0)
+}
+
+process.on("SIGINT", shutdown)
+process.on("SIGTERM", shutdown)
 
 console.log(`todo sync server on http://0.0.0.0:${server.port}`)

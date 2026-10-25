@@ -72,6 +72,28 @@ IP or domain in the app.
 Attachments are copied into the app data directory and uploaded to the server;
 another device downloads them into its own directory when it pulls the task.
 
+## Server binary
+
+```
+bun run build:server        # dist/todo-sync (host platform)
+bun run build:server:linux  # dist/todo-sync-linux-x64
+bun run build:server:arm64  # dist/todo-sync-linux-arm64
+```
+
+The binary has no runtime dependencies and embeds the migrations. Put it in a
+directory together with a `.env` file (see `.env.example`):
+
+```
+PORT=8787
+PASSWORD=change-me
+DB=sync.db
+```
+
+Then run `./todo-sync`. `sync.db` and `.env` are read next to the executable;
+`PORT`, `PASSWORD`, `DB` can also come from the real environment. If `DB` is
+relative, it is resolved next to the binary. On `SIGINT`/`SIGTERM` the server
+checkpoints the WAL, so `DB` can be backed up on its own after it stops.
+
 ## Permissions
 
 `pulsar.json` lists the capabilities the app uses: `storage`, `fs`, `paths`,

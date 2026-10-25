@@ -1,0 +1,11 @@
+[
+  {
+    "sql": [
+      "CREATE TABLE IF NOT EXISTS `files` (\n\t`key` text PRIMARY KEY NOT NULL,\n\t`data` blob NOT NULL,\n\t`updatedAT` integer NOT NULL\n);",
+      "CREATE TABLE IF NOT EXISTS `tags` (\n\t`ID` text PRIMARY KEY NOT NULL,\n\t`data` text NOT NULL,\n\t`updatedAT` integer NOT NULL,\n\t`deleted` integer DEFAULT 0 NOT NULL\n);",
+      "CREATE TABLE IF NOT EXISTS `todos` (\n\t`ID` text PRIMARY KEY NOT NULL,\n\t`data` text NOT NULL,\n\t`updatedAT` integer NOT NULL,\n\t`deleted` integer DEFAULT 0 NOT NULL\n);"
+    ],
+    "folderMillis": 1792957342868,
+    "hash": "92bca2465ab187b767614dacfc00c87becc0a28d65676becbfcaaaeddcb99eba"
+  }
+]
