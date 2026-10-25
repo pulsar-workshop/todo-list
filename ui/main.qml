@@ -90,6 +90,9 @@ ApplicationWindow {
                 placeholderText: "Что нужно сделать?"
                 font.pixelSize: 16
                 onAccepted: window.addTask()
+                onActiveFocusChanged: {
+                    if (activeFocus) Qt.inputMethod.show()
+                }
             }
 
             Button {
@@ -398,5 +401,4 @@ ApplicationWindow {
         editor.openFor(todo, Store.tags ?? [])
     }
 
-    Component.onCompleted: input.forceActiveFocus()
 }
