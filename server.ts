@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite"
 import { drizzle } from "drizzle-orm/bun-sqlite"
-import { eq, like, sql } from "drizzle-orm"
+import { and, eq, like, lt, ne, sql } from "drizzle-orm"
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs"
 import { tmpdir } from "os"
 import { dirname, isAbsolute, join } from "path"
@@ -41,6 +41,12 @@ const password = process.env.PASSWORD ?? ""
 const dbName = process.env.DB ?? "sync.db"
 const dbPath = isAbsolute(dbName) ? dbName : join(baseDir, dbName)
 
+const trashDays = (): number => {
+  const days = Number(process.env.TRASH_DAYS ?? 30)
+
+  return Number.isFinite(days) && days >= 0 ? days : 30
+}
+
 type State = {
   todos: unknown[]
   tags: unknown[]
@@ -59,6 +65,29 @@ migrate(sqlite)
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+type Deletion = {
+  ID: string
+  at: number
+}
+
+const parseDeletions = (value: unknown): Deletion[] => {
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((ID) => ({ ID, at: Number.MAX_SAFE_INTEGER }))
+  }
+
+  if (!isRecord(value)) return []
+
+  const deletions: Deletion[] = []
+
+  for (const [ID, at] of Object.entries(value)) {
+    if (typeof at === "number" && Number.isFinite(at)) deletions.push({ ID, at })
+  }
+
+  return deletions
 }
 
 const isVideo = (key: string): boolean => {
@@ -107,6 +136,34 @@ const asUpdated = (value: unknown): number => {
   return typeof value === "number" && Number.isFinite(value) ? value : 0
 }
 
+const purgeTrash = (): void => {
+  const cutoff = Date.now() - trashDays() * 86400000
+
+  const expiredTodos = db
+    .select({ ID: todos.ID })
+    .from(todos)
+    .where(and(eq(todos.deleted, 1), lt(todos.updatedAT, cutoff), ne(todos.data, "{}")))
+    .all()
+
+  for (const row of expiredTodos) {
+    db.delete(files)
+      .where(like(files.key, `${row.ID}/%`))
+      .run()
+    db.delete(files)
+      .where(like(files.key, `${THUMB_PREFIX}${row.ID}/%`))
+      .run()
+    db.update(todos).set({ data: "{}" }).where(eq(todos.ID, row.ID)).run()
+  }
+
+  db.update(tags)
+    .set({ data: "{}" })
+    .where(and(eq(tags.deleted, 1), lt(tags.updatedAT, cutoff), ne(tags.data, "{}")))
+    .run()
+}
+
+purgeTrash()
+setInterval(purgeTrash, 3600000)
+
 const state = (): State => {
   const todoRows = db
     .select({ data: todos.data })
@@ -137,9 +194,7 @@ const state = (): State => {
       .where(eq(tags.deleted, 1))
       .all()
       .map((row) => row.ID),
-    files: fileRows
-      .map((row) => row.key)
-      .filter((key) => !key.startsWith(THUMB_PREFIX)),
+    files: fileRows.map((row) => row.key).filter((key) => !key.startsWith(THUMB_PREFIX)),
   }
 }
 
@@ -175,32 +230,44 @@ const server = Bun.serve({
 
     const incomingTodos = body.todos
     const incomingTags = Array.isArray(body.tags) ? body.tags : []
-    const deletedTodos = Array.isArray(body.deletedTodos)
-      ? body.deletedTodos.filter((value): value is string => typeof value === "string")
-      : []
-    const deletedTags = Array.isArray(body.deletedTags)
-      ? body.deletedTags.filter((value): value is string => typeof value === "string")
-      : []
+    const deletedTodos = parseDeletions(body.deletedTodos)
+    const deletedTags = parseDeletions(body.deletedTags)
 
     db.transaction((tx) => {
-      for (const ID of deletedTodos) {
-        tx.insert(todos)
-          .values({ ID, data: "{}", updatedAT: Date.now(), deleted: 1 })
-          .onConflictDoUpdate({ target: todos.ID, set: { deleted: 1 } })
-          .run()
-        tx.delete(files)
-          .where(like(files.key, `${ID}/%`))
-          .run()
-        tx.delete(files)
-          .where(like(files.key, `${THUMB_PREFIX}${ID}/%`))
-          .run()
+      for (const { ID, at } of deletedTodos) {
+        const existing = tx
+          .select({ deleted: todos.deleted, updatedAT: todos.updatedAT })
+          .from(todos)
+          .where(eq(todos.ID, ID))
+          .get()
+
+        if (existing?.deleted) continue
+        if (existing && existing.updatedAT > at) continue
+
+        if (existing) {
+          tx.update(todos).set({ deleted: 1, updatedAT: Date.now() }).where(eq(todos.ID, ID)).run()
+          continue
+        }
+
+        tx.insert(todos).values({ ID, data: "{}", updatedAT: Date.now(), deleted: 1 }).run()
       }
 
-      for (const ID of deletedTags) {
-        tx.insert(tags)
-          .values({ ID, data: "{}", updatedAT: Date.now(), deleted: 1 })
-          .onConflictDoUpdate({ target: tags.ID, set: { deleted: 1 } })
-          .run()
+      for (const { ID, at } of deletedTags) {
+        const existing = tx
+          .select({ deleted: tags.deleted, updatedAT: tags.updatedAT })
+          .from(tags)
+          .where(eq(tags.ID, ID))
+          .get()
+
+        if (existing?.deleted) continue
+        if (existing && existing.updatedAT > at) continue
+
+        if (existing) {
+          tx.update(tags).set({ deleted: 1, updatedAT: Date.now() }).where(eq(tags.ID, ID)).run()
+          continue
+        }
+
+        tx.insert(tags).values({ ID, data: "{}", updatedAT: Date.now(), deleted: 1 }).run()
       }
 
       for (const value of incomingTodos) {
@@ -307,7 +374,9 @@ async function handleFile(request: Request, url: URL): Promise<Response> {
 
   if (request.method === "DELETE") {
     db.delete(files).where(eq(files.key, key)).run()
-    db.delete(files).where(eq(files.key, thumbKey(key))).run()
+    db.delete(files)
+      .where(eq(files.key, thumbKey(key)))
+      .run()
 
     return json({ ok: true })
   }

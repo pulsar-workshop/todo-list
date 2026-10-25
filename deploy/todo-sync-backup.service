@@ -1,0 +1,6 @@
+[Unit]
+Description=Back up the todo sync database
+
+[Service]
+Type=oneshot
+ExecStart=/opt/todo-sync/backup.sh

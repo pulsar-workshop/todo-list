@@ -284,7 +284,16 @@ const applyRemote = (remote: RemoteState): boolean => {
   const localTodos = new Map(todos.map((todo) => [todo.ID, todo]))
 
   for (const todo of remote.todos) {
-    if (deletedTodos[todo.ID]) continue
+    const tombstoneAt = deletedTodos[todo.ID]
+
+    if (tombstoneAt !== undefined) {
+      if (todo.updatedAT <= tombstoneAt) continue
+
+      const next = { ...deletedTodos }
+      delete next[todo.ID]
+      deletedTodos = next
+      changed = true
+    }
 
     const local = localTodos.get(todo.ID)
 
@@ -303,7 +312,16 @@ const applyRemote = (remote: RemoteState): boolean => {
   const localTags = new Map(tags.map((tag) => [tag.ID, tag]))
 
   for (const tag of remote.tags) {
-    if (deletedTags[tag.ID]) continue
+    const tombstoneAt = deletedTags[tag.ID]
+
+    if (tombstoneAt !== undefined) {
+      if (tag.updatedAT <= tombstoneAt) continue
+
+      const next = { ...deletedTags }
+      delete next[tag.ID]
+      deletedTags = next
+      changed = true
+    }
 
     const local = localTags.get(tag.ID)
 
@@ -486,8 +504,8 @@ const push = async () => {
       body: JSON.stringify({
         todos,
         tags,
-        deletedTodos: Object.keys(deletedTodos),
-        deletedTags: Object.keys(deletedTags),
+        deletedTodos,
+        deletedTags,
       }),
       timeoutMs: 5000,
     })

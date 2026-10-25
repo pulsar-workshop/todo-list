@@ -57,6 +57,35 @@ set `PASSWORD` to require a bearer token). It stores everything in `sync.db`
 The schema lives in `db/schema.ts`; `bun run db:generate` regenerates the
 migrations in `drizzle/`, which the server applies on start.
 
+Deleted tasks and tags keep their full data and attachment blobs in SQLite for
+`TRASH_DAYS` (default 30) so they can be restored manually with SQL. The
+tombstone itself stays forever, so a stale device cannot resurrect the item.
+After the retention the data and blobs are purged. There is no trash UI.
+
+A manual restore within the retention window:
+
+```
+sqlite3 sync.db "UPDATE todos SET deleted = 0, updatedAT = CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER) WHERE ID = '...'"
+```
+
+The restored `updatedAT` is newer than the clients' tombstones, so their next
+sync drops the tombstone and keeps the task. Tags use the `tags` table.
+
+## Backups (VPS)
+
+The deployed server keeps daily SQLite backups in `/opt/todo-sync/backups`
+(30 days) through `todo-sync-backup.timer` at 04:00. The script and units are
+in `deploy/`:
+
+```
+install -m 700 deploy/backup.sh /opt/todo-sync/backup.sh
+cp deploy/todo-sync-backup.service deploy/todo-sync-backup.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now todo-sync-backup.timer
+```
+
+Manual run: `systemctl start todo-sync-backup.service`.
+
 Open **Настройки** in the app and enter the server address, port and password. The app
 pushes after every change and pulls every four seconds while there are no
 pending changes. Merging is per object, so a task created on two devices at
