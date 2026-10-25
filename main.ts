@@ -10,6 +10,10 @@ type Todo = {
 
 const app = new App()
 
+const newID = () => {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
 let todos: Todo[] = []
 
 const parseTodo = (value: unknown): Todo | null => {
@@ -52,7 +56,7 @@ const addTodo = (params: { text?: unknown }) => {
   todos = [
     ...todos,
     {
-      ID: crypto.randomUUID(),
+      ID: newID(),
       text,
       done: false,
       createdAT: Date.now(),
