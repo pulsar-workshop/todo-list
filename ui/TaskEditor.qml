@@ -488,6 +488,7 @@ Item {
                                     return editor.draft ? editor.draft.tags.includes(modelData.ID) : false
                                 }
                                 interactive: true
+                                maxWidth: editor.width - 64
                                 onClicked: editor.toggleTag(modelData.ID)
                             }
                         }

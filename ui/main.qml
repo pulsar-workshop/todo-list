@@ -18,14 +18,19 @@ ApplicationWindow {
         return list.find((tag) => tag.ID === ID) ?? { name: ID, color: "#64748b" }
     }
 
+    function formatDate(value) {
+        return Qt.formatDateTime(new Date(value), "dd.MM.yyyy HH:mm")
+    }
+
     function formatDates(todo) {
-        const format = (value) => Qt.formatDateTime(new Date(value), "dd.MM.yyyy HH:mm")
+        if (todo.startAT !== null && todo.endAT !== null) {
+            return "с " + formatDate(todo.startAT) + " до " + formatDate(todo.endAT)
+        }
 
-        if (todo.startAT !== null && todo.endAT !== null) return "с " + format(todo.startAT) + " до " + format(todo.endAT)
-        if (todo.endAT !== null) return "до " + format(todo.endAT)
-        if (todo.startAT !== null) return "с " + format(todo.startAT)
+        if (todo.endAT !== null) return "до " + formatDate(todo.endAT)
+        if (todo.startAT !== null) return "с " + formatDate(todo.startAT)
 
-        return "Создано: " + format(todo.createdAT)
+        return ""
     }
 
     function subtaskLabel(todo) {
@@ -117,36 +122,36 @@ ApplicationWindow {
                 required property var modelData
 
                 width: list.width
-                height: content.implicitHeight + 20
-                radius: 10
+                height: layout.implicitHeight + 24
+                radius: 12
                 color: "#ffffff"
+                border.width: 1
+                border.color: "#ececf0"
 
-                RowLayout {
-                    id: content
+                ColumnLayout {
+                    id: layout
 
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 8
-                    anchors.topMargin: 10
-                    anchors.bottomMargin: 10
+                    anchors.margins: 12
                     spacing: 8
 
-                    CheckBox {
-                        checked: row.modelData.done
-                        onClicked: Pulsar.emit("toggle-todo", { ID: row.modelData.ID })
-                    }
-
-                    ColumnLayout {
+                    RowLayout {
                         Layout.fillWidth: true
-                        spacing: 3
+                        spacing: 8
 
-                        TapHandler {
-                            onTapped: window.editTask(row.modelData)
+                        CheckBox {
+                            checked: row.modelData.done
+                            Layout.alignment: Qt.AlignTop
+                            onClicked: Pulsar.emit("toggle-todo", { ID: row.modelData.ID })
                         }
 
-                        RowLayout {
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            spacing: 6
+                            spacing: 4
+
+                            TapHandler {
+                                onTapped: window.editTask(row.modelData)
+                            }
 
                             Label {
                                 Layout.fillWidth: true
@@ -155,62 +160,101 @@ ApplicationWindow {
                                 font.pixelSize: 16
                                 font.bold: true
                                 font.strikeout: row.modelData.done
+                                wrapMode: Text.Wrap
+                                maximumLineCount: 2
                                 elide: Text.ElideRight
                             }
 
-                            Repeater {
-                                model: row.modelData.tags
+                            Label {
+                                Layout.fillWidth: true
+                                visible: row.modelData.description !== ""
+                                text: row.modelData.description
+                                color: row.modelData.done ? "#b6b6bd" : "#8e8e96"
+                                font.pixelSize: 13
+                                wrapMode: Text.Wrap
+                                maximumLineCount: 2
+                                elide: Text.ElideRight
+                            }
 
-                                delegate: TagChip {
-                                    required property var modelData
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
 
-                                    label: window.tagByID(modelData).name
-                                    chipColor: window.tagByID(modelData).color
-                                    selected: true
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: "Создано: " + window.formatDate(row.modelData.createdAT)
+                                    color: "#a1a1a9"
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    visible: row.modelData.completedAT != null
+                                    text: row.modelData.completedAT != null
+                                        ? "Завершено: " + window.formatDate(row.modelData.completedAT)
+                                        : ""
+                                    color: "#a1a1a9"
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    visible: row.modelData.startAT !== null || row.modelData.endAT !== null
+                                    text: window.formatDates(row.modelData)
+                                    color: "#a1a1a9"
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    visible: row.modelData.subtasks.length > 0
+                                    text: window.subtaskLabel(row.modelData)
+                                    color: "#a1a1a9"
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
+                                }
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    visible: row.modelData.files.length > 0
+                                    text: "Файлов: " + row.modelData.files.length
+                                    color: "#a1a1a9"
+                                    font.pixelSize: 12
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
 
                         Label {
-                            Layout.fillWidth: true
-                            visible: row.modelData.description !== ""
-                            text: row.modelData.description
-                            color: "#8e8e96"
-                            font.pixelSize: 13
-                            elide: Text.ElideRight
-                        }
-
-                        Label {
-                            Layout.fillWidth: true
-                            text: window.formatDates(row.modelData)
-                            color: "#a1a1a9"
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
-                        }
-
-                        RowLayout {
-                            spacing: 12
-
-                            Label {
-                                visible: window.subtaskLabel(row.modelData) !== ""
-                                text: window.subtaskLabel(row.modelData)
-                                color: "#a1a1a9"
-                                font.pixelSize: 12
-                            }
-
-                            Label {
-                                visible: row.modelData.files.length > 0
-                                text: "Файлов: " + row.modelData.files.length
-                                color: "#a1a1a9"
-                                font.pixelSize: 12
-                            }
+                            text: "›"
+                            color: "#c7c7cc"
+                            font.pixelSize: 22
+                            Layout.alignment: Qt.AlignTop
                         }
                     }
 
-                    Button {
-                        text: "Изменить"
-                        flat: true
-                        onClicked: window.editTask(row.modelData)
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: childrenRect.height
+                        Layout.topMargin: 2
+                        spacing: 6
+                        visible: row.modelData.tags.length > 0
+
+                        Repeater {
+                            model: row.modelData.tags
+
+                            delegate: TagChip {
+                                required property var modelData
+
+                                label: window.tagByID(modelData).name
+                                chipColor: window.tagByID(modelData).color
+                                selected: true
+                                maxWidth: row.width - 32
+                            }
+                        }
                     }
                 }
             }

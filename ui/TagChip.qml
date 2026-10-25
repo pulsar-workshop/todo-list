@@ -7,10 +7,11 @@ Rectangle {
     property color chipColor: "#64748b"
     property bool selected: true
     property bool interactive: false
+    property int maxWidth: 0
 
     signal clicked()
 
-    implicitWidth: text.implicitWidth + 16
+    implicitWidth: chip.maxWidth > 0 ? Math.min(text.implicitWidth + 16, chip.maxWidth) : text.implicitWidth + 16
     implicitHeight: 24
     radius: 12
     color: chip.selected ? chip.chipColor : "#e5e7eb"
@@ -20,9 +21,11 @@ Rectangle {
         id: text
 
         anchors.centerIn: parent
+        width: Math.min(implicitWidth, chip.width - 16)
         text: chip.label
         color: chip.selected ? "#ffffff" : "#4b5563"
         font.pixelSize: 12
+        elide: Text.ElideRight
     }
 
     TapHandler {
