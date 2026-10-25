@@ -86,8 +86,11 @@ Item {
 
     function openAttachment(file) {
         if (isImage(file.name)) {
-            imageViewer.source = "file://" + file.path
-            imageViewer.visible = true
+            Qt.callLater(() => {
+                imageViewer.source = "file://" + file.path
+                imageViewer.visible = true
+            })
+
             return
         }
 
@@ -212,6 +215,7 @@ Item {
         endInput.focus = false
         tagInput.focus = false
         subtaskInput.focus = false
+        imageViewer.visible = false
         deleteDialog.close()
         datePicker.close()
         editor.forceActiveFocus()
@@ -280,8 +284,9 @@ Item {
         anchors.fill: parent
         color: "#80000000"
 
-        TapHandler {
-            onTapped: editor.close()
+        MouseArea {
+            anchors.fill: parent
+            onClicked: editor.close()
         }
     }
 
@@ -302,7 +307,8 @@ Item {
             }
         }
 
-        TapHandler {
+        MouseArea {
+            anchors.fill: parent
         }
 
         ColumnLayout {
@@ -752,8 +758,9 @@ Item {
             asynchronous: true
         }
 
-        TapHandler {
-            onTapped: imageViewer.visible = false
+        MouseArea {
+            anchors.fill: parent
+            onClicked: imageViewer.visible = false
         }
 
         Button {
