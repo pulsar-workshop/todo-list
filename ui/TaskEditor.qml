@@ -7,9 +7,11 @@ Item {
     id: editor
 
     anchors.fill: parent
-    visible: false
+    visible: shown || opacity > 0
+    opacity: shown ? 1 : 0
     z: 100
 
+    property bool shown: false
     property var draft: null
     property var allTags: []
     property int tick: 0
@@ -17,6 +19,13 @@ Item {
     property string newTagColor: "#3b82f6"
 
     readonly property var tagPalette: ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"]
+
+    Behavior on opacity {
+        NumberAnimation {
+            duration: 150
+            easing.type: Easing.OutCubic
+        }
+    }
 
     signal saveRequested(string json)
     signal deleteRequested(string ID)
@@ -154,7 +163,7 @@ Item {
         createdInput.text = formatTime(draft.createdAT)
         completedInput.text = formatTime(draft.completedAT)
 
-        visible = true
+        shown = true
     }
 
     function ensureFocusedVisible() {
@@ -192,7 +201,7 @@ Item {
         tagInput.focus = false
         subtaskInput.focus = false
         editor.forceActiveFocus()
-        visible = false
+        shown = false
     }
 
     function attachTag(tag) {
@@ -270,6 +279,14 @@ Item {
         anchors.centerIn: parent
         radius: 16
         color: "#ffffff"
+        scale: editor.shown ? 1 : 0.9
+
+        Behavior on scale {
+            NumberAnimation {
+                duration: 220
+                easing.type: Easing.OutQuint
+            }
+        }
 
         ColumnLayout {
             anchors.fill: parent

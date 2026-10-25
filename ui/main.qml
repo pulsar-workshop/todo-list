@@ -261,7 +261,7 @@ ApplicationWindow {
             if (!payload) return
 
             if (event === "back-pressed") {
-                if (editor.visible) {
+                if (editor.shown) {
                     if (!editor.closeViewer()) editor.close()
 
                     return
