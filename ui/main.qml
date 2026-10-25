@@ -195,6 +195,7 @@ ApplicationWindow {
                             text: window.formatDates(row.modelData)
                             color: "#a1a1a9"
                             font.pixelSize: 12
+                            elide: Text.ElideRight
                         }
 
                         RowLayout {

@@ -102,6 +102,8 @@ Item {
         descriptionInput.text = draft.description
         startInput.text = formatTime(draft.startAT)
         endInput.text = formatTime(draft.endAT)
+        createdInput.text = formatTime(draft.createdAT)
+        completedInput.text = formatTime(draft.completedAT)
 
         visible = true
         titleInput.forceActiveFocus()
@@ -149,8 +151,10 @@ Item {
     function save() {
         const startAT = parseTime(startInput.text)
         const endAT = parseTime(endInput.text)
+        const createdAT = parseTime(createdInput.text)
+        const completedAT = parseTime(completedInput.text)
 
-        if (startAT === undefined || endAT === undefined) {
+        if (startAT === undefined || endAT === undefined || createdAT === undefined || completedAT === undefined) {
             timeError = true
             return
         }
@@ -159,6 +163,9 @@ Item {
         draft.description = descriptionInput.text
         draft.startAT = startAT
         draft.endAT = endAT
+        draft.completedAT = completedAT
+
+        if (createdAT !== null) draft.createdAT = createdAT
 
         saveRequested(JSON.stringify(draft))
         close()
@@ -225,7 +232,7 @@ Item {
 
                     Label {
                         Layout.fillWidth: true
-                        text: "Начало и конец (ДД.ММ.ГГГГ ЧЧ:ММ). Только конец — дедлайн."
+                        text: "Нажмите на поле, чтобы выбрать дату и время. Только конец — дедлайн."
                         color: "#8e8e96"
                         font.pixelSize: 12
                         wrapMode: Text.WordWrap
@@ -241,6 +248,12 @@ Item {
                             Layout.fillWidth: true
                             placeholderText: "с"
                             font.pixelSize: 14
+                            readOnly: true
+                            activeFocusOnPress: false
+
+                            TapHandler {
+                                onTapped: datePicker.openFor("start")
+                            }
                         }
 
                         TextField {
@@ -249,6 +262,63 @@ Item {
                             Layout.fillWidth: true
                             placeholderText: "до"
                             font.pixelSize: 14
+                            readOnly: true
+                            activeFocusOnPress: false
+
+                            TapHandler {
+                                onTapped: datePicker.openFor("end")
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Label {
+                            Layout.preferredWidth: 76
+                            text: "Создано"
+                            color: "#8e8e96"
+                            font.pixelSize: 12
+                        }
+
+                        TextField {
+                            id: createdInput
+
+                            Layout.fillWidth: true
+                            font.pixelSize: 14
+                            readOnly: true
+                            activeFocusOnPress: false
+
+                            TapHandler {
+                                onTapped: datePicker.openFor("created")
+                            }
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        visible: editor.draft && editor.draft.completedAT !== null
+
+                        Label {
+                            Layout.preferredWidth: 76
+                            text: "Завершено"
+                            color: "#8e8e96"
+                            font.pixelSize: 12
+                        }
+
+                        TextField {
+                            id: completedInput
+
+                            Layout.fillWidth: true
+                            font.pixelSize: 14
+                            readOnly: true
+                            activeFocusOnPress: false
+
+                            TapHandler {
+                                onTapped: datePicker.openFor("completed")
+                            }
                         }
                     }
 
@@ -555,4 +625,301 @@ Item {
         }
     }
 
+    Dialog {
+        id: datePicker
+
+        parent: Overlay.overlay
+        modal: true
+        title: datePicker.target === "start" ? "Начало"
+            : datePicker.target === "created" ? "Создано"
+            : datePicker.target === "completed" ? "Завершено"
+            : "Дедлайн"
+        width: Math.min(editor.width - 32, 420)
+        x: (Overlay.overlay.width - width) / 2
+        y: Math.max(8, (Overlay.overlay.height - height) / 2)
+        padding: 16
+
+        property string target: "end"
+        property int viewYear: 0
+        property int viewMonth: 0
+        property date selectedDate: new Date()
+        property var dayModel: []
+
+        readonly property int cellSize: Math.floor((width - 32) / 7)
+        readonly property var monthNames: ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+
+        function buildDays() {
+            const first = new Date(viewYear, viewMonth, 1)
+            const offset = (first.getDay() + 6) % 7
+            const total = new Date(viewYear, viewMonth + 1, 0).getDate()
+            const cells = []
+
+            for (let index = 0; index < 42; index++) {
+                const day = index - offset + 1
+
+                cells.push(day >= 1 && day <= total ? day : 0)
+            }
+
+            return cells
+        }
+
+        function refresh() {
+            dayModel = buildDays()
+        }
+
+        function inputFor(which) {
+            if (which === "start") return startInput
+            if (which === "created") return createdInput
+            if (which === "completed") return completedInput
+
+            return endInput
+        }
+
+        function openFor(which) {
+            target = which
+
+            const value = parseTime(inputFor(which).text)
+            const date = value ? new Date(value) : new Date()
+
+            selectedDate = date
+            viewYear = date.getFullYear()
+            viewMonth = date.getMonth()
+            hourBox.currentIndex = date.getHours()
+            minuteBox.currentIndex = date.getMinutes()
+            refresh()
+            open()
+        }
+
+        function shiftMonth(delta) {
+            const date = new Date(viewYear, viewMonth + delta, 1)
+
+            viewYear = date.getFullYear()
+            viewMonth = date.getMonth()
+            refresh()
+        }
+
+        function shiftYear(delta) {
+            viewYear += delta
+            refresh()
+        }
+
+        function selectDay(day) {
+            selectedDate = new Date(viewYear, viewMonth, day)
+        }
+
+        function isSelected(day) {
+            return day > 0
+                && selectedDate.getFullYear() === viewYear
+                && selectedDate.getMonth() === viewMonth
+                && selectedDate.getDate() === day
+        }
+
+        function accept() {
+            const date = new Date(selectedDate)
+
+            date.setHours(hourBox.currentIndex, minuteBox.currentIndex, 0, 0)
+
+            const value = Qt.formatDateTime(date, "dd.MM.yyyy HH:mm")
+
+            inputFor(target).text = value
+
+            close()
+        }
+
+        function clear() {
+            inputFor(target).text = ""
+
+            close()
+        }
+
+        contentItem: ColumnLayout {
+            width: datePicker.width - 32
+            spacing: 8
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Button {
+                    text: "‹"
+                    flat: true
+                    onClicked: datePicker.shiftMonth(-1)
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    text: datePicker.monthNames[datePicker.viewMonth]
+                    color: "#1d1d1f"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                Button {
+                    text: "›"
+                    flat: true
+                    onClicked: datePicker.shiftMonth(1)
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Button {
+                    text: "‹"
+                    flat: true
+                    onClicked: datePicker.shiftYear(-1)
+                }
+
+                Label {
+                    Layout.fillWidth: true
+                    horizontalAlignment: Text.AlignHCenter
+                    text: datePicker.viewYear
+                    color: "#1d1d1f"
+                    font.pixelSize: 15
+                }
+
+                Button {
+                    text: "›"
+                    flat: true
+                    onClicked: datePicker.shiftYear(1)
+                }
+            }
+
+            Item {
+                Layout.alignment: Qt.AlignHCenter
+                width: datePicker.cellSize * 7
+                implicitHeight: weekHeader.height + dayGrid.height + 4
+
+                Grid {
+                    id: weekHeader
+                    columns: 7
+
+                    Repeater {
+                        model: ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+
+                        delegate: Label {
+                            required property string modelData
+
+                            width: datePicker.cellSize
+                            horizontalAlignment: Text.AlignHCenter
+                            text: modelData
+                            color: "#8e8e96"
+                            font.pixelSize: 12
+                        }
+                    }
+                }
+
+                Grid {
+                    id: dayGrid
+                    y: weekHeader.height + 4
+                    columns: 7
+
+                    Repeater {
+                        model: datePicker.dayModel
+
+                        delegate: Item {
+                            id: cell
+
+                            required property int modelData
+
+                            width: datePicker.cellSize
+                            height: datePicker.cellSize
+
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: cell.width - 6
+                                height: cell.height - 6
+                                radius: width / 2
+                                color: datePicker.isSelected(cell.modelData) ? "#3b82f6" : "transparent"
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: cell.modelData > 0 ? cell.modelData : ""
+                                    color: datePicker.isSelected(cell.modelData) ? "#ffffff" : "#1d1d1f"
+                                    font.pixelSize: 14
+                                }
+                            }
+
+                            TapHandler {
+                                onTapped: {
+                                    if (cell.modelData > 0) datePicker.selectDay(cell.modelData)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                Label {
+                    text: "Время"
+                    color: "#1d1d1f"
+                    font.pixelSize: 14
+                }
+
+                Tumbler {
+                    id: hourBox
+
+                    Layout.preferredWidth: 64
+                    Layout.preferredHeight: 108
+                    model: 24
+                    visibleItemCount: 3
+                }
+
+                Label {
+                    text: ":"
+                    color: "#1d1d1f"
+                    font.pixelSize: 14
+                }
+
+                Tumbler {
+                    id: minuteBox
+
+                    Layout.preferredWidth: 64
+                    Layout.preferredHeight: 108
+                    model: 60
+                    visibleItemCount: 3
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+            }
+        }
+
+        footer: Item {
+            implicitHeight: 56
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 4
+                spacing: 8
+
+                Button {
+                    text: "Очистить"
+                    flat: true
+                    onClicked: datePicker.clear()
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    text: "Отмена"
+                    onClicked: datePicker.close()
+                }
+
+                Button {
+                    text: "Готово"
+                    onClicked: datePicker.accept()
+                }
+            }
+        }
+    }
 }
