@@ -855,6 +855,14 @@ app.on("open-file", async (params: { path?: unknown }) => {
 
   if (typeof Bun === "undefined" || typeof process === "undefined") return
 
+  if (process.platform === "linux" && isVideo(path)) {
+    try {
+      Bun.spawn(["mpv", "--fs", "--force-window=yes", path], { stdout: "ignore", stderr: "ignore" })
+
+      return
+    } catch {}
+  }
+
   const command =
     process.platform === "darwin"
       ? ["open", path]
