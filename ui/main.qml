@@ -241,6 +241,8 @@ ApplicationWindow {
         onAddTagRequested: (name, color) => Pulsar.emit("add-tag", { name, color })
         onPickFilesRequested: (ID) => Pulsar.emit("pick-files", { ID })
         onRemoveFileRequested: (ID, path) => Pulsar.emit("remove-file", { ID, path })
+        onExportFileRequested: (path, name) => Pulsar.emit("export-file", { path, name })
+        onOpenFileRequested: (path) => Pulsar.emit("open-file", { path })
     }
 
     Connections {

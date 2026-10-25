@@ -16,13 +16,38 @@ Item {
     property bool timeError: false
     property string newTagColor: "#3b82f6"
 
-    readonly property var palette: ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"]
+    readonly property var tagPalette: ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"]
 
     signal saveRequested(string json)
     signal deleteRequested(string ID)
     signal addTagRequested(string name, string color)
     signal pickFilesRequested(string ID)
     signal removeFileRequested(string ID, string path)
+    signal exportFileRequested(string path, string name)
+    signal openFileRequested(string path)
+
+    function openAttachment(file) {
+        if (isImage(file.name)) {
+            imageViewer.source = "file://" + file.path
+            imageViewer.visible = true
+            return
+        }
+
+        openFileRequested(file.path)
+    }
+
+    function closeViewer() {
+        if (!imageViewer.visible) return false
+
+        imageViewer.visible = false
+
+        return true
+    }
+
+    function isImage(name) {
+        return /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(name)
+    }
+
     function fileMeta(file) {
         const parts = []
 
@@ -292,7 +317,7 @@ Item {
                         spacing: 6
 
                         Repeater {
-                            model: editor.palette
+                            model: editor.tagPalette
 
                             delegate: Rectangle {
                                 required property string modelData
@@ -398,11 +423,49 @@ Item {
                             Layout.fillWidth: true
                             spacing: 6
 
-                            Label {
+                            Image {
+                                visible: editor.isImage(modelData.name)
+                                source: visible ? "file://" + modelData.path : ""
+                                Layout.preferredWidth: 44
+                                Layout.preferredHeight: 44
+                                fillMode: Image.PreserveAspectCrop
+                                asynchronous: true
+                                cache: true
+
+                                TapHandler {
+                                    onTapped: editor.openAttachment(modelData)
+                                }
+                            }
+
+                            ColumnLayout {
                                 Layout.fillWidth: true
-                                text: modelData.name
-                                elide: Text.ElideMiddle
-                                font.pixelSize: 13
+                                spacing: 2
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: modelData.name
+                                    elide: Text.ElideMiddle
+                                    font.pixelSize: 13
+
+                                    TapHandler {
+                                        onTapped: editor.openAttachment(modelData)
+                                    }
+                                }
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    visible: text !== ""
+                                    text: editor.fileMeta(modelData)
+                                    color: "#a1a1a9"
+                                    font.pixelSize: 11
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            Button {
+                                text: "↓"
+                                flat: true
+                                onClicked: editor.exportFileRequested(modelData.path, modelData.name)
                             }
 
                             Button {
@@ -455,4 +518,41 @@ Item {
             }
         }
     }
+
+    Item {
+        id: imageViewer
+
+        anchors.fill: parent
+        visible: false
+        z: 300
+
+        property string source: ""
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#000000"
+        }
+
+        Image {
+            anchors.fill: parent
+            anchors.margins: 8
+            fillMode: Image.PreserveAspectFit
+            source: imageViewer.source
+            asynchronous: true
+        }
+
+        TapHandler {
+            onTapped: imageViewer.visible = false
+        }
+
+        Button {
+            text: "×"
+            flat: true
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.margins: 8
+            onClicked: imageViewer.visible = false
+        }
+    }
+
 }

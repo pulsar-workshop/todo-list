@@ -1,4 +1,4 @@
-import { App, dialog, fs, net, paths, storage } from "pulsar"
+import { App, callCapability, dialog, fs, net, paths, storage } from "pulsar"
 
 
 type Subtask = {
@@ -471,6 +471,27 @@ app.on("delete-todo", deleteTodo)
 app.on("add-tag", addTag)
 app.on("pick-files", pickFiles)
 app.on("remove-file", removeFile)
+app.on("export-file", async (params: { path?: unknown; name?: unknown }) => {
+  const path = typeof params?.path === "string" ? params.path : ""
+  const name = typeof params?.name === "string" ? params.name : ""
+
+  if (!path) return
+
+  try {
+    const ok = await callCapability("fs.exportTo", { path, name })
+
+    if (ok) await callCapability("dialog.toast", { text: "Скачано" })
+  } catch {}
+})
+app.on("open-file", async (params: { path?: unknown }) => {
+  const path = typeof params?.path === "string" ? params.path : ""
+
+  if (!path) return
+
+  try {
+    await callCapability("fs.open", { path })
+  } catch {}
+})
 app.on("save-sync", saveSync)
 
 const start = async () => {
