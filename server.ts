@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs"
 import { join } from "path"
 
 const port = Number(process.env.PORT ?? 8787)
+const password = process.env.PASSWORD ?? ""
 const statePath = join(import.meta.dir, "sync-state.json")
 
 const load = (): unknown[] => {
@@ -29,6 +30,10 @@ const server = Bun.serve({
     const path = new URL(request.url).pathname
 
     if (path !== "/todos") return new Response("not found", { status: 404 })
+
+    if (password && request.headers.get("authorization") !== `Bearer ${password}`) {
+      return new Response("unauthorized", { status: 401, headers: { "www-authenticate": "Bearer" } })
+    }
 
     if (request.method === "GET") return Response.json(todos)
 
