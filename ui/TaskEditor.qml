@@ -95,6 +95,18 @@ Item {
     }
 
     function closeViewer() {
+        if (deleteDialog.visible) {
+            deleteDialog.close()
+
+            return true
+        }
+
+        if (datePicker.visible) {
+            datePicker.close()
+
+            return true
+        }
+
         if (!imageViewer.visible) return false
 
         imageViewer.visible = false
@@ -200,6 +212,8 @@ Item {
         endInput.focus = false
         tagInput.focus = false
         subtaskInput.focus = false
+        deleteDialog.close()
+        datePicker.close()
         editor.forceActiveFocus()
         shown = false
     }
@@ -692,10 +706,7 @@ Item {
                 Button {
                     text: "Удалить"
                     flat: true
-                    onClicked: {
-                        editor.deleteRequested(editor.draft.ID)
-                        editor.close()
-                    }
+                    onClicked: deleteDialog.confirm(editor.draft.ID)
                 }
 
                 Item {
@@ -1044,6 +1055,60 @@ Item {
                 Button {
                     text: "Готово"
                     onClicked: datePicker.accept()
+                }
+            }
+        }
+    }
+
+    Dialog {
+        id: deleteDialog
+
+        parent: Overlay.overlay
+        modal: true
+        title: "Удалить задачу?"
+        width: Math.min(editor.width - 32, 420)
+        x: (Overlay.overlay.width - width) / 2
+        y: Math.max(8, (Overlay.overlay.height - height) / 2)
+        padding: 16
+
+        property string taskID: ""
+
+        function confirm(ID) {
+            taskID = ID
+            open()
+        }
+
+        contentItem: Label {
+            text: "Задачу нельзя будет восстановить."
+            color: "#1d1d1f"
+            font.pixelSize: 14
+            wrapMode: Text.WordWrap
+        }
+
+        footer: Item {
+            implicitHeight: 56
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 4
+                spacing: 8
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    text: "Отмена"
+                    onClicked: deleteDialog.close()
+                }
+
+                Button {
+                    text: "Удалить"
+                    onClicked: {
+                        editor.deleteRequested(deleteDialog.taskID)
+                        deleteDialog.close()
+                        editor.close()
+                    }
                 }
             }
         }
