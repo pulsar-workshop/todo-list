@@ -12,6 +12,16 @@ ApplicationWindow {
     title: "Todo List"
     color: "#f5f5f7"
 
+    TapHandler {
+        onTapped: (eventPoint) => {
+            const point = input.mapFromItem(window.contentItem, eventPoint.position.x, eventPoint.position.y)
+
+            if (input.contains(point)) return
+
+            input.focus = false
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 24
@@ -82,6 +92,10 @@ ApplicationWindow {
             clip: true
             spacing: 4
             model: Store.todos ?? []
+
+            TapHandler {
+                onTapped: input.focus = false
+            }
 
             delegate: Rectangle {
                 id: row
