@@ -11,6 +11,7 @@ type Todo = {
 type SyncSettings = {
   host: string
   port: string
+  password: string
 }
 
 const DEFAULT_PORT = "8787"
@@ -19,7 +20,7 @@ const app = new App()
 
 const sync = { dirty: false }
 
-let syncSettings: SyncSettings = { host: "", port: DEFAULT_PORT }
+let syncSettings: SyncSettings = { host: "", port: DEFAULT_PORT, password: "" }
 
 const newID = () => {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
@@ -56,10 +57,19 @@ const syncBase = (): string => {
   return `http://${syncSettings.host}:${syncSettings.port}`
 }
 
+const syncHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = { "content-type": "application/json" }
+
+  if (syncSettings.password) headers.authorization = `Bearer ${syncSettings.password}`
+
+  return headers
+}
+
 const setStatus = (status: string) => {
   app.store.set("syncStatus", status)
   app.store.set("syncHost", syncSettings.host)
   app.store.set("syncPort", syncSettings.port)
+  app.store.set("syncPassword", syncSettings.password)
 }
 
 const push = async () => {
@@ -75,7 +85,7 @@ const push = async () => {
   try {
     await net.fetch(`${base}/todos`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: syncHeaders(),
       body: JSON.stringify(todos),
       timeoutMs: 2500,
     })
@@ -98,7 +108,7 @@ const pull = async () => {
   if (!base || sync.dirty) return
 
   try {
-    const response = await net.fetch(`${base}/todos`, { timeoutMs: 2500 })
+    const response = await net.fetch(`${base}/todos`, { headers: syncHeaders(), timeoutMs: 2500 })
     const list = JSON.parse(response.text) as unknown
 
     setStatus("ok")
@@ -123,18 +133,20 @@ const loadSync = async () => {
     const record = saved as Record<string, unknown>
     const host = typeof record.host === "string" ? record.host : ""
     const port = typeof record.port === "string" ? record.port : DEFAULT_PORT
+    const password = typeof record.password === "string" ? record.password : ""
 
-    syncSettings = { host, port }
+    syncSettings = { host, port, password }
   }
 
   setStatus(syncSettings.host ? "idle" : "off")
 }
 
-const saveSync = async (params: { host?: unknown; port?: unknown }) => {
+const saveSync = async (params: { host?: unknown; port?: unknown; password?: unknown }) => {
   const host = typeof params?.host === "string" ? params.host.trim() : ""
   const port = typeof params?.port === "string" ? params.port.trim() : ""
+  const password = typeof params?.password === "string" ? params.password : ""
 
-  syncSettings = { host, port: port || DEFAULT_PORT }
+  syncSettings = { host, port: port || DEFAULT_PORT, password }
 
   await storage.set("sync", syncSettings)
 

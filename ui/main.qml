@@ -284,6 +284,7 @@ ApplicationWindow {
         function openDialog() {
             hostInput.text = Store.syncHost ?? ""
             portInput.text = Store.syncPort ?? "8787"
+            passwordInput.text = Store.syncPassword ?? ""
             syncError.visible = false
             open()
         }
@@ -298,7 +299,7 @@ ApplicationWindow {
                 return
             }
 
-            Pulsar.emit("save-sync", { host: hostInput.text, port: text })
+            Pulsar.emit("save-sync", { host: hostInput.text, port: text, password: passwordInput.text })
             close()
         }
 
@@ -334,6 +335,21 @@ ApplicationWindow {
                 font.pixelSize: 15
                 inputMethodHints: Qt.ImhDigitsOnly
                 onAccepted: syncDialog.save()
+            }
+
+            Label {
+                text: "Пароль (если задан на сервере)"
+                color: "#8e8e96"
+                font.pixelSize: 13
+            }
+
+            TextField {
+                id: passwordInput
+
+                Layout.fillWidth: true
+                font.pixelSize: 15
+                echoMode: TextInput.Password
+                placeholderText: "необязательно"
             }
 
             Label {
