@@ -76,9 +76,12 @@ another device downloads them into its own directory when it pulls the task.
 
 ```
 bun run build:server        # dist/todo-sync (host platform)
-bun run build:server:linux  # dist/todo-sync-linux-x64
+bun run build:server:linux  # dist/todo-sync-linux-x64 (baseline CPU target)
 bun run build:server:arm64  # dist/todo-sync-linux-arm64
 ```
+
+The Linux build uses Bun's baseline CPU target, so it also runs on older VPS
+processors without AVX2.
 
 The binary has no runtime dependencies and embeds the migrations. Put it in a
 directory together with a `.env` file (see `.env.example`):

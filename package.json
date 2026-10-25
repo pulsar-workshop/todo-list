@@ -9,7 +9,7 @@
     "server": "bun server.ts",
     "db:generate": "drizzle-kit generate && bun scripts/embed-migrations.ts",
     "build:server": "bun build --compile --minify server.ts --outfile dist/todo-sync",
-    "build:server:linux": "bun build --compile --minify --target=bun-linux-x64 server.ts --outfile dist/todo-sync-linux-x64",
+    "build:server:linux": "bun build --compile --minify --target=bun-linux-x64-baseline server.ts --outfile dist/todo-sync-linux-x64",
     "build:server:arm64": "bun build --compile --minify --target=bun-linux-arm64 server.ts --outfile dist/todo-sync-linux-arm64",
     "typecheck": "tsc --noEmit"
   },
