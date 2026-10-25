@@ -28,3 +28,15 @@ bun run build
 ```
 
 The result goes to `dist/todo-list`.
+
+## Build an APK
+
+```
+pulsar build --target android
+```
+
+The first Android build provisions JDK 17, the Android SDK/NDK and Qt for
+Android into `PULSAR_HOME` (about 4.5 GB, one time). The result is
+`dist/todo-list.apk` for arm64-v8a (minSdk 28).
+
+`pulsar check --target android` verifies that the app only uses portable APIs.
