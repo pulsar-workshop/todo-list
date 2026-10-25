@@ -12,10 +12,17 @@ ApplicationWindow {
     title: "Todo List"
     color: "#f5f5f7"
 
-    function tagByID(ID) {
+    readonly property var tagsByID: {
+        const map = {}
         const list = Store.tags ?? []
 
-        return list.find((tag) => tag.ID === ID) ?? { name: ID, color: "#64748b" }
+        for (const tag of list) map[tag.ID] = tag
+
+        map
+    }
+
+    function tagByID(ID) {
+        return window.tagsByID[ID] ?? { name: ID, color: "#64748b" }
     }
 
     function formatDate(value) {
