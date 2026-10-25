@@ -93,6 +93,13 @@ ApplicationWindow {
                 onActiveFocusChanged: {
                     if (activeFocus) Qt.inputMethod.show()
                 }
+
+                TapHandler {
+                    onTapped: {
+                        input.forceActiveFocus()
+                        Qt.inputMethod.show()
+                    }
+                }
             }
 
             Button {
