@@ -134,10 +134,14 @@ Item {
         return parts.join(" · ")
     }
 
-    function formatTime(value) {
+    function formatTime(value, allDay) {
         if (value === null || value === undefined) return ""
 
-        return Qt.formatDateTime(new Date(value), "dd.MM.yyyy HH:mm")
+        return Qt.formatDateTime(new Date(value), allDay ? "dd.MM.yyyy" : "dd.MM.yyyy HH:mm:ss")
+    }
+
+    function isDateOnly(text) {
+        return text.trim() !== "" && !/\d{1,2}:\d{2}/.test(text)
     }
 
     function parseTime(text) {
@@ -145,7 +149,7 @@ Item {
 
         if (value === "") return null
 
-        const match = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?$/)
+        const match = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/)
 
         if (!match) return undefined
 
@@ -154,11 +158,12 @@ Item {
         const year = Number(match[3])
         const hour = match[4] === undefined ? 0 : Number(match[4])
         const minute = match[5] === undefined ? 0 : Number(match[5])
+        const second = match[6] === undefined ? 0 : Number(match[6])
 
         if (month < 1 || month > 12 || day < 1 || day > 31) return undefined
-        if (hour > 23 || minute > 59) return undefined
+        if (hour > 23 || minute > 59 || second > 59) return undefined
 
-        const date = new Date(year, month - 1, day, hour, minute)
+        const date = new Date(year, month - 1, day, hour, minute, second)
 
         if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return undefined
 
@@ -177,10 +182,10 @@ Item {
 
         titleInput.text = draft.text
         descriptionInput.text = draft.description
-        startInput.text = formatTime(draft.startAT)
-        endInput.text = formatTime(draft.endAT)
-        createdInput.text = formatTime(draft.createdAT)
-        completedInput.text = formatTime(draft.completedAT)
+        startInput.text = formatTime(draft.startAT, draft.startAllDay)
+        endInput.text = formatTime(draft.endAT, draft.endAllDay)
+        createdInput.text = formatTime(draft.createdAT, draft.createdAllDay)
+        completedInput.text = formatTime(draft.completedAT, draft.completedAllDay)
 
         shown = true
     }
@@ -276,9 +281,15 @@ Item {
         draft.description = descriptionInput.text
         draft.startAT = startAT
         draft.endAT = endAT
+        draft.startAllDay = isDateOnly(startInput.text)
+        draft.endAllDay = isDateOnly(endInput.text)
         draft.completedAT = completedAT
+        draft.completedAllDay = isDateOnly(completedInput.text)
 
-        if (createdAT !== null) draft.createdAT = createdAT
+        if (createdAT !== null) {
+            draft.createdAT = createdAT
+            draft.createdAllDay = isDateOnly(createdInput.text)
+        }
 
         saveRequested(JSON.stringify(draft))
         close()
@@ -464,7 +475,7 @@ Item {
 
                     Label {
                         visible: editor.timeError
-                        text: "Дата и время в формате ДД.ММ.ГГГГ ЧЧ:ММ"
+                        text: "Дата: ДД.ММ.ГГГГ, время: ЧЧ:ММ:СС (время можно не указывать)"
                         color: "#ef4444"
                         font.pixelSize: 12
                     }
@@ -826,6 +837,7 @@ Item {
         }
 
         property string target: "end"
+        property bool allDay: false
         property int viewYear: 0
         property int viewMonth: 0
         property date selectedDate: new Date()
@@ -863,6 +875,7 @@ Item {
 
         function openFor(which) {
             target = which
+            allDay = isDateOnly(inputFor(which).text)
 
             const value = parseTime(inputFor(which).text)
             const date = value ? new Date(value) : new Date()
@@ -872,6 +885,7 @@ Item {
             viewMonth = date.getMonth()
             hourBox.currentIndex = date.getHours()
             minuteBox.currentIndex = date.getMinutes()
+            secondBox.currentIndex = date.getSeconds()
             refresh()
             open()
         }
@@ -903,9 +917,13 @@ Item {
         function accept() {
             const date = new Date(selectedDate)
 
-            date.setHours(hourBox.currentIndex, minuteBox.currentIndex, 0, 0)
+            if (allDay) {
+                date.setHours(0, 0, 0, 0)
+            } else {
+                date.setHours(hourBox.currentIndex, minuteBox.currentIndex, secondBox.currentIndex, 0)
+            }
 
-            const value = Qt.formatDateTime(date, "dd.MM.yyyy HH:mm")
+            const value = Qt.formatDateTime(date, allDay ? "dd.MM.yyyy" : "dd.MM.yyyy HH:mm:ss")
 
             inputFor(target).text = value
 
@@ -1038,9 +1056,16 @@ Item {
                 }
             }
 
+            CheckBox {
+                text: "Только дата"
+                checked: datePicker.allDay
+                onToggled: datePicker.allDay = checked
+            }
+
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
+                visible: !datePicker.allDay
 
                 Label {
                     text: "Время"
@@ -1051,7 +1076,7 @@ Item {
                 Tumbler {
                     id: hourBox
 
-                    Layout.preferredWidth: 64
+                    Layout.preferredWidth: 56
                     Layout.preferredHeight: 108
                     model: 24
                     visibleItemCount: 3
@@ -1066,7 +1091,22 @@ Item {
                 Tumbler {
                     id: minuteBox
 
-                    Layout.preferredWidth: 64
+                    Layout.preferredWidth: 56
+                    Layout.preferredHeight: 108
+                    model: 60
+                    visibleItemCount: 3
+                }
+
+                Label {
+                    text: ":"
+                    color: "#1d1d1f"
+                    font.pixelSize: 14
+                }
+
+                Tumbler {
+                    id: secondBox
+
+                    Layout.preferredWidth: 56
                     Layout.preferredHeight: 108
                     model: 60
                     visibleItemCount: 3

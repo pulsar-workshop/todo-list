@@ -25,17 +25,17 @@ ApplicationWindow {
         return window.tagsByID[ID] ?? { name: ID, color: "#64748b" }
     }
 
-    function formatDate(value) {
-        return Qt.formatDateTime(new Date(value), "dd.MM.yyyy HH:mm")
+    function formatDate(value, allDay) {
+        return Qt.formatDateTime(new Date(value), allDay ? "dd.MM.yyyy" : "dd.MM.yyyy HH:mm:ss")
     }
 
     function formatDates(todo) {
         if (todo.startAT !== null && todo.endAT !== null) {
-            return "с " + formatDate(todo.startAT) + " до " + formatDate(todo.endAT)
+            return "с " + formatDate(todo.startAT, todo.startAllDay) + " до " + formatDate(todo.endAT, todo.endAllDay)
         }
 
-        if (todo.endAT !== null) return "до " + formatDate(todo.endAT)
-        if (todo.startAT !== null) return "с " + formatDate(todo.startAT)
+        if (todo.endAT !== null) return "до " + formatDate(todo.endAT, todo.endAllDay)
+        if (todo.startAT !== null) return "с " + formatDate(todo.startAT, todo.startAllDay)
 
         return ""
     }
@@ -220,7 +220,7 @@ ApplicationWindow {
 
                                 Label {
                                     Layout.fillWidth: true
-                                    text: "Создано: " + window.formatDate(row.modelData.createdAT)
+                                    text: "Создано: " + window.formatDate(row.modelData.createdAT, row.modelData.createdAllDay)
                                     color: "#a1a1a9"
                                     font.pixelSize: 12
                                     elide: Text.ElideRight
@@ -230,7 +230,7 @@ ApplicationWindow {
                                     Layout.fillWidth: true
                                     visible: row.modelData.completedAT != null
                                     text: row.modelData.completedAT != null
-                                        ? "Завершено: " + window.formatDate(row.modelData.completedAT)
+                                        ? "Завершено: " + window.formatDate(row.modelData.completedAT, row.modelData.completedAllDay)
                                         : ""
                                     color: "#a1a1a9"
                                     font.pixelSize: 12

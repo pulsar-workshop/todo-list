@@ -27,6 +27,10 @@ type Todo = {
   completedAT: number | null
   startAT: number | null
   endAT: number | null
+  createdAllDay: boolean
+  completedAllDay: boolean
+  startAllDay: boolean
+  endAllDay: boolean
   tags: string[]
   subtasks: Subtask[]
   files: Attachment[]
@@ -137,6 +141,10 @@ const parseTodo = (value: unknown): Todo | null => {
     completedAT: asNumber(record.completedAT),
     startAT: asNumber(record.startAT),
     endAT: asNumber(record.endAT),
+    createdAllDay: record.createdAllDay === true,
+    completedAllDay: record.completedAllDay === true,
+    startAllDay: record.startAllDay === true,
+    endAllDay: record.endAllDay === true,
     tags: Array.isArray(record.tags) ? record.tags.filter((tag): tag is string => typeof tag === "string") : [],
     subtasks,
     files,
@@ -621,6 +629,10 @@ const addTodo = (params: { text?: unknown }) => {
       completedAT: null,
       startAT: null,
       endAT: null,
+      createdAllDay: false,
+      completedAllDay: false,
+      startAllDay: false,
+      endAllDay: false,
       tags: [],
       subtasks: [],
       files: [],
@@ -676,6 +688,7 @@ const toggleTodo = (params: { ID?: unknown }) => {
       done,
       updatedAT: Date.now(),
       completedAT: done ? Date.now() : null,
+      completedAllDay: false,
     }
   })
 
