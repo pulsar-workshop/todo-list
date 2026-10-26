@@ -729,17 +729,17 @@ const pickFiles = async (params: { ID?: unknown }) => {
 
   if (!ID) return
 
+  const dirs = await paths.get()
   let picked: string[] = []
 
   try {
-    picked = await dialog.openFiles({ title: "Прикрепить файлы" })
+    picked = await dialog.openFiles({ title: "Прикрепить файлы", dir: dirs.home, filter: "All files (*)" })
   } catch {
     return
   }
 
   if (picked.length === 0) return
 
-  const dirs = await paths.get()
   const target = `${dirs.data}/attachments/${ID}`
   const added: Attachment[] = []
 

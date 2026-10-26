@@ -23,6 +23,12 @@ bun run dev
 bun run start
 ```
 
+`dev` and `start` clear `QT_QPA_PLATFORMTHEME` so the file picker uses Qt's
+own dialog. With the KDE platform theme (`QT_QPA_PLATFORMTHEME=kde`) on
+Hyprland the native dialog can fail to list files (`KIO: Unknown protocol
+"file"`); for a built binary run it as
+`QT_QPA_PLATFORMTHEME= ./todo-list`.
+
 ## Build a single-file app
 
 ```
