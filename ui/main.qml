@@ -119,6 +119,37 @@ ApplicationWindow {
             spacing: 6
             model: Store.todos ?? []
 
+            property real keepY: 0
+            property bool modelUpdating: false
+
+            onMovementEnded: keepY = contentY
+            onFlickEnded: keepY = contentY
+
+            onContentYChanged: {
+                if (!modelUpdating && !moving && !flicking) saveScrollTimer.restart()
+            }
+
+            onModelChanged: {
+                modelUpdating = true
+
+                const y = keepY
+
+                Qt.callLater(() => {
+                    contentY = y
+                    modelUpdating = false
+                })
+            }
+
+            Timer {
+                id: saveScrollTimer
+
+                interval: 200
+
+                onTriggered: {
+                    if (!list.modelUpdating) list.keepY = list.contentY
+                }
+            }
+
             TapHandler {
                 onTapped: input.focus = false
             }
