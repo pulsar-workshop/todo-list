@@ -85,6 +85,12 @@ ApplicationWindow {
             }
 
             Button {
+                text: "↻"
+                flat: true
+                onClicked: Pulsar.emit("sync-now", {})
+            }
+
+            Button {
                 text: "Настройки"
                 flat: true
                 onClicked: syncDialog.openDialog()
@@ -266,6 +272,13 @@ ApplicationWindow {
                             }
                         }
 
+                        ToolButton {
+                            text: "⋯"
+                            flat: true
+                            Layout.alignment: Qt.AlignTop
+                            onClicked: rowMenu.popup()
+                        }
+
                         Label {
                             text: "›"
                             color: "#c7c7cc"
@@ -293,6 +306,20 @@ ApplicationWindow {
                                 maxWidth: row.width - 32
                             }
                         }
+                    }
+                }
+
+                Menu {
+                    id: rowMenu
+
+                    MenuItem {
+                        text: "Копировать"
+                        onTriggered: Pulsar.emit("copy-todo", { ID: row.modelData.ID })
+                    }
+
+                    MenuItem {
+                        text: "Поделиться"
+                        onTriggered: Pulsar.emit("share-todo", { ID: row.modelData.ID })
                     }
                 }
             }
@@ -350,6 +377,19 @@ ApplicationWindow {
                 }
 
                 if (syncDialog.visible) syncDialog.close()
+
+                return
+            }
+
+            if (event === "focus-new-task") {
+                input.forceActiveFocus()
+                list.positionViewAtBeginning()
+
+                return
+            }
+
+            if (event === "open-settings") {
+                syncDialog.openDialog()
 
                 return
             }
@@ -512,6 +552,24 @@ ApplicationWindow {
     function editTask(todo) {
         input.focus = false
         Qt.callLater(() => editor.openFor(todo, Store.tags ?? []))
+    }
+
+    Shortcut {
+        sequence: "Ctrl+N"
+        onActivated: {
+            input.forceActiveFocus()
+            list.positionViewAtBeginning()
+        }
+    }
+
+    Shortcut {
+        sequence: "Ctrl+R"
+        onActivated: Pulsar.emit("sync-now", {})
+    }
+
+    Shortcut {
+        sequence: "Ctrl+,"
+        onActivated: syncDialog.openDialog()
     }
 
 }

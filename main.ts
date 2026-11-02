@@ -1,4 +1,15 @@
-import { App, callCapability, dialog, fs, net, paths, storage } from "pulsar"
+import {
+  App,
+  clipboard,
+  dialog,
+  fs,
+  net,
+  notify,
+  paths,
+  permissions,
+  share,
+  storage,
+} from "pulsar"
 
 type Subtask = {
   ID: string
@@ -198,6 +209,34 @@ const isVideo = (name: string): boolean => {
   return VIDEO_PATTERN.test(name)
 }
 
+const isAndroid = (): boolean => {
+  return typeof Bun === "undefined"
+}
+
+const findTodo = (value: unknown): Todo | null => {
+  const ID = typeof value === "string" ? value : ""
+
+  if (!ID) return null
+
+  return todos.find((todo) => todo.ID === ID) ?? null
+}
+
+const todoAsText = (todo: Todo): string => {
+  const lines = [`${todo.done ? "[x]" : "[ ]"} ${todo.text}`]
+
+  if (todo.description) lines.push(todo.description)
+
+  for (const subtask of todo.subtasks) lines.push(`${subtask.done ? "[x]" : "[ ]"} ${subtask.text}`)
+
+  if (todo.tags.length > 0) {
+    const names = todo.tags.map((ID) => tags.find((tag) => tag.ID === ID)?.name ?? ID)
+
+    lines.push(`Теги: ${names.join(", ")}`)
+  }
+
+  return lines.join("\n")
+}
+
 const thumbPath = (root: string, todoID: string, file: Attachment): string => {
   return `${root}/${todoID}/.thumb-${baseName(file.path)}.jpg`
 }
@@ -241,11 +280,44 @@ const syncHeaders = (): Record<string, string> => {
   return headers
 }
 
+let syncWasOnline = false
+let lastSyncAlertAT = 0
+
+const notifySyncError = async (): Promise<void> => {
+  if (!syncSettings.host) return
+  if (Date.now() - lastSyncAlertAT < 60_000) return
+
+  lastSyncAlertAT = Date.now()
+
+  try {
+    if (isAndroid()) {
+      await permissions.request("notifications")
+      await notify.channel({ id: "sync", name: "Синхронизация", importance: 3 })
+    }
+
+    await notify.show({
+      title: "Синхронизация",
+      body: "Сервер недоступен",
+      actions: [{ id: "settings", title: "Настройки" }],
+    })
+  } catch {}
+}
+
 const setStatus = (status: string) => {
   app.store.set("syncStatus", status)
   app.store.set("syncHost", syncSettings.host)
   app.store.set("syncPort", syncSettings.port)
   app.store.set("syncPassword", syncSettings.password)
+
+  if (status === "ok") {
+    syncWasOnline = true
+    return
+  }
+
+  if (status === "error" && syncWasOnline) {
+    syncWasOnline = false
+    void notifySyncError()
+  }
 }
 
 const parseState = (text: string): RemoteState | null => {
@@ -599,6 +671,53 @@ const saveSync = async (params: { host?: unknown; port?: unknown; password?: unk
   if (host) await push()
 }
 
+const syncNow = async (): Promise<void> => {
+  if (!syncSettings.host) {
+    app.send("open-settings")
+    return
+  }
+
+  if (sync.dirty) await push()
+  else await pull()
+}
+
+const copyTodo = async (params: { ID?: unknown }): Promise<void> => {
+  const todo = findTodo(params?.ID)
+
+  if (!todo) return
+
+  try {
+    await clipboard.write(todoAsText(todo))
+    await dialog.toast("Скопировано")
+  } catch {}
+}
+
+const shareTodo = async (params: { ID?: unknown }): Promise<void> => {
+  const todo = findTodo(params?.ID)
+
+  if (!todo) return
+
+  try {
+    await share.text(todoAsText(todo), { title: "Поделиться задачей" })
+  } catch {}
+}
+
+const installMenu = (): void => {
+  app.setMenu([
+    {
+      label: "Задача",
+      items: [
+        { id: "new-task", label: "Новая задача", shortcut: "Ctrl+N" },
+        { id: "sync-now", label: "Синхронизировать", shortcut: "Ctrl+R" },
+        { separator: true },
+        { id: "settings", label: "Настройки…", shortcut: "Ctrl+," },
+        { separator: true },
+        { id: "quit", label: "Выход", shortcut: "Ctrl+Q" },
+      ],
+    },
+  ])
+}
+
 const render = () => {
   app.store.set("todos", todos)
   app.store.set("tags", tags)
@@ -861,6 +980,9 @@ app.on("delete-todo", deleteTodo)
 app.on("add-tag", addTag)
 app.on("pick-files", pickFiles)
 app.on("remove-file", removeFile)
+app.on("copy-todo", copyTodo)
+app.on("share-todo", shareTodo)
+app.on("sync-now", () => void syncNow())
 app.on("export-file", async (params: { path?: unknown; name?: unknown }) => {
   const path = typeof params?.path === "string" ? params.path : ""
   const name = typeof params?.name === "string" ? params.name : ""
@@ -868,9 +990,9 @@ app.on("export-file", async (params: { path?: unknown; name?: unknown }) => {
   if (!path) return
 
   try {
-    const ok = await callCapability("fs.exportTo", { path, name })
+    const ok = await fs.exportTo(path, name)
 
-    if (ok) await callCapability("dialog.toast", { text: "Скачано" })
+    if (ok) await dialog.toast("Скачано")
   } catch {}
 })
 app.on("open-file", async (params: { path?: unknown }) => {
@@ -878,8 +1000,10 @@ app.on("open-file", async (params: { path?: unknown }) => {
 
   if (!path) return
 
+  app.addRecentDocument(path)
+
   try {
-    await callCapability("fs.open", { path })
+    await fs.open(path)
 
     return
   } catch {}
@@ -909,6 +1033,27 @@ app.on("save-sync", saveSync)
 app.on("back-pressed", () => {
   app.send("back-pressed", {})
 })
+app.on("menu", (payload: { id?: unknown }) => {
+  const id = typeof payload?.id === "string" ? payload.id : ""
+
+  if (id === "new-task") app.send("focus-new-task")
+  if (id === "settings") app.send("open-settings")
+  if (id === "sync-now") void syncNow()
+  if (id === "quit") app.quit()
+})
+app.on("notification-action", (payload: { id?: unknown }) => {
+  if (payload?.id === "settings") app.send("open-settings")
+})
+app.on("notification-click", () => {
+  void app.window().show()
+  void app.window().focus()
+  app.send("open-settings")
+})
+app.on("power-resume", () => {
+  if (syncSettings.host) void syncNow()
+})
+
+installMenu()
 
 const start = async () => {
   await loadSync()

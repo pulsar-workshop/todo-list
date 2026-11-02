@@ -6,10 +6,14 @@ Add a task, mark it done, or delete it. Each task can be renamed, described,
 given a start and end time (or just a deadline), tags with colors, subtasks and
 attached files. Tasks are persisted in the app data directory.
 
+The task menu copies or shares a task, sync failures raise a native
+notification, and macOS gets a native menu bar. `Ctrl+N` focuses the new-task
+field, `Ctrl+R` syncs immediately and `Ctrl+,` opens the sync settings.
+
 ## Requirements
 
 - [Bun](https://bun.sh) (the Pulsar CLI runs on Bun)
-- The Pulsar toolchain 1.0.0 or newer: run `pulsar install` once
+- The Pulsar toolchain 1.2.3 or newer: run `pulsar install` once
 
 ## Develop
 
@@ -135,5 +139,6 @@ checkpoints the WAL, so `DB` can be backed up on its own after it stops.
 ## Permissions
 
 `pulsar.json` lists the capabilities the app uses: `storage`, `fs`, `paths`,
-`dialog` and `net`. A listed set is a whitelist, so every capability the app
-calls must be present.
+`dialog`, `net`, `clipboard`, `share`, `notify` and `permissions`. A listed set
+is a whitelist, so every capability the app calls must be present.
+`osPermissions` declares the Android notification permission.
