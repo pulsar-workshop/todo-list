@@ -64,7 +64,7 @@ export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
       onLongPress: () => openEditor(todo),
     },
     Row(
-      { gap: 10, fillWidth: true, align: "start" },
+      { gap: 10, fillWidth: true },
       Checkbox({
         checked: todo.done,
         onToggle: () => toggleTodo({ ID: todo.ID }),

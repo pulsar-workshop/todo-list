@@ -7,6 +7,7 @@ import {
   Input,
   Page,
   Row,
+  Spacer,
   Text,
   When,
 } from "pulsar"
@@ -60,6 +61,7 @@ const HeaderRow = () => {
         Text({ text: syncLabel(), size: 12, color: syncColor() }),
       ),
     ),
+    Spacer({ fillWidth: true }),
     Button({
       variant: "ghost",
       icon: "sync",
