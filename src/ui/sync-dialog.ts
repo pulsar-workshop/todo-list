@@ -1,30 +1,33 @@
-import { Box, Button, Column, Input, Row, Spacer, Text } from "pulsar";
-import { setUI, uiValue } from "../state.ts";
-import { backgroundColor, textColor } from "../theme.ts";
-import { closeSync, saveSyncForm } from "./state.ts";
+import { Box, Button, Column, Input, Page, Row, Spacer, Text } from "pulsar"
+import { setUI, uiValue } from "../state.ts"
+import { backgroundColor, textColor } from "../theme.ts"
+import { closeSync, saveSyncForm } from "./state.ts"
 
 export const SyncPage = () =>
   Box(
     { fill: true, color: backgroundColor() },
-    Column(
-      { fill: true, padding: 16, gap: 10 },
-      Row(
-        { gap: 6, fillWidth: true, align: "center" },
-        Button(
-          { variant: "ghost", icon: "arrow_back", onClick: closeSync },
-          "Назад",
+    Page(
+      {
+        padding: 16,
+        gap: 10,
+        header: Row(
+          { gap: 6, fillWidth: true, align: "center" },
+          Button(
+            { variant: "ghost", icon: "arrow_back", onClick: closeSync },
+            "Назад",
+          ),
+          Text({
+            text: "Синхронизация",
+            size: 20,
+            weight: "semibold",
+            color: textColor(false),
+          }),
+          Spacer({ fillWidth: true }),
+          Button({ onClick: () => void saveSyncForm() }, "Сохранить"),
         ),
-        Text({
-          text: "Синхронизация",
-          size: 20,
-          weight: "semibold",
-          color: textColor(false),
-        }),
-        Spacer({ fillWidth: true }),
-        Button({ onClick: () => void saveSyncForm() }, "Сохранить"),
-      ),
+      },
       Text({
-        text: "Сервер",
+        text: "СЕРВЕР",
         size: 10,
         weight: "medium",
         color: textColor(true),
@@ -65,4 +68,4 @@ export const SyncPage = () =>
         color: textColor(true),
       }),
     ),
-  );
+  )

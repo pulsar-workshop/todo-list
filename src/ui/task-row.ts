@@ -8,35 +8,40 @@ import {
   Text,
   defineComponent,
   type ColorValue,
-} from "pulsar";
-import { toggleTodo } from "../actions.ts";
-import { formatDateValue, formatDates, subtaskLabel } from "../format.ts";
-import { tagByID } from "../state.ts";
-import { surfaceColor, textColor } from "../theme.ts";
-import type { Tag, Todo } from "../types.ts";
-import { openEditor } from "./state.ts";
+} from "pulsar"
+import { toggleTodo } from "../actions.ts"
+import { formatDateValue, formatDates, subtaskLabel } from "../format.ts"
+import { tagByID } from "../state.ts"
+import {
+  borderColor,
+  hoverSurfaceColor,
+  surfaceColor,
+  textColor,
+} from "../theme.ts"
+import type { Tag, Todo } from "../types.ts"
+import { openEditor } from "./state.ts"
 
 const metaLine = (todo: Todo): string => {
   const parts = [
     `Создано: ${formatDateValue(todo.createdAT, todo.createdAllDay)}`,
-  ];
+  ]
 
   if (todo.completedAT !== null)
     parts.push(
       `Завершено: ${formatDateValue(todo.completedAT, todo.completedAllDay)}`,
-    );
+    )
   if (todo.startAT !== null || todo.endAT !== null)
-    parts.push(formatDates(todo));
-  if (todo.subtasks.length > 0) parts.push(subtaskLabel(todo.subtasks));
-  if (todo.files.length > 0) parts.push(`Файлов: ${todo.files.length}`);
+    parts.push(formatDates(todo))
+  if (todo.subtasks.length > 0) parts.push(subtaskLabel(todo.subtasks))
+  if (todo.files.length > 0) parts.push(`Файлов: ${todo.files.length}`)
 
-  return parts.join(" · ");
-};
+  return parts.join(" · ")
+}
 
 export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
   const tags = todo.tags
     .map((ID) => tagByID(ID))
-    .filter((tag): tag is Tag => tag !== null);
+    .filter((tag): tag is Tag => tag !== null)
 
   const tagLabels = tags.map((tag) =>
     Row(
@@ -44,14 +49,17 @@ export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
       Box({ width: 6, height: 6, radius: 3, color: tag.color as ColorValue }),
       Text({ text: tag.name, size: 11, color: textColor(true) }),
     ),
-  );
+  )
 
   return Card(
     {
       padding: 12,
-      radius: 12,
-      elevation: 1,
+      radius: 10,
+      elevation: 0,
       color: surfaceColor(),
+      hoverColor: hoverSurfaceColor(),
+      borderColor: borderColor(),
+      borderWidth: 1,
       opacity: todo.done ? 0.62 : 1,
       onLongPress: () => openEditor(todo),
     },
@@ -99,5 +107,5 @@ export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
         onClick: () => openEditor(todo),
       }),
     ),
-  );
-});
+  )
+})

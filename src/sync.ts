@@ -1,4 +1,4 @@
-import { fs, net, paths } from "pulsar";
+import { fs, net, paths } from "pulsar"
 import {
   attachmentKey,
   baseName,
@@ -8,43 +8,43 @@ import {
   parseTag,
   parseTodo,
   thumbPath,
-} from "./model.ts";
-import { persistState, writeSyncSettings } from "./storage.ts";
-import { refresh, state } from "./state.ts";
-import { setStatus } from "./sync-status.ts";
+} from "./model.ts"
+import { persistState, writeSyncSettings } from "./storage.ts"
+import { refresh, state } from "./state.ts"
+import { setStatus } from "./sync-status.ts"
 import type {
   Attachment,
   RemoteState,
   SyncSettings,
   Tag,
   Todo,
-} from "./types.ts";
+} from "./types.ts"
 
 const syncBase = (): string => {
-  return `http://${state.syncSettings.host}:${state.syncSettings.port}`;
-};
+  return `http://${state.syncSettings.host}:${state.syncSettings.port}`
+}
 
 const syncHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {
     "content-type": "application/json",
-  };
-
-  if (state.syncSettings.password)
-    headers.authorization = `Bearer ${state.syncSettings.password}`;
-
-  return headers;
-};
-
-const parseState = (text: string): RemoteState | null => {
-  let parsed: unknown;
-
-  try {
-    parsed = JSON.parse(text) as unknown;
-  } catch {
-    return null;
   }
 
-  if (!isRecord(parsed)) return null;
+  if (state.syncSettings.password)
+    headers.authorization = `Bearer ${state.syncSettings.password}`
+
+  return headers
+}
+
+const parseState = (text: string): RemoteState | null => {
+  let parsed: unknown
+
+  try {
+    parsed = JSON.parse(text) as unknown
+  } catch {
+    return null
+  }
+
+  if (!isRecord(parsed)) return null
 
   return {
     todos: Array.isArray(parsed.todos)
@@ -64,96 +64,96 @@ const parseState = (text: string): RemoteState | null => {
     files: Array.isArray(parsed.files)
       ? parsed.files.filter((key): key is string => typeof key === "string")
       : [],
-  };
-};
+  }
+}
 
 const applyRemote = (remote: RemoteState): boolean => {
-  let changed = false;
+  let changed = false
 
   for (const ID of remote.deletedTodos) {
-    if (state.deletedTodos[ID] !== undefined) continue;
+    if (state.deletedTodos[ID] !== undefined) continue
 
-    state.deletedTodos = { ...state.deletedTodos, [ID]: Date.now() };
-    changed = true;
+    state.deletedTodos = { ...state.deletedTodos, [ID]: Date.now() }
+    changed = true
   }
 
   for (const ID of remote.deletedTags) {
-    if (state.deletedTags[ID] !== undefined) continue;
+    if (state.deletedTags[ID] !== undefined) continue
 
-    state.deletedTags = { ...state.deletedTags, [ID]: Date.now() };
-    changed = true;
+    state.deletedTags = { ...state.deletedTags, [ID]: Date.now() }
+    changed = true
   }
 
-  const localTodos = new Map(state.todos.map((todo) => [todo.ID, todo]));
+  const localTodos = new Map(state.todos.map((todo) => [todo.ID, todo]))
 
   for (const todo of remote.todos) {
-    const tombstoneAt = state.deletedTodos[todo.ID];
+    const tombstoneAt = state.deletedTodos[todo.ID]
 
     if (tombstoneAt !== undefined) {
-      if (todo.updatedAT <= tombstoneAt) continue;
+      if (todo.updatedAT <= tombstoneAt) continue
 
-      const next = { ...state.deletedTodos };
-      delete next[todo.ID];
-      state.deletedTodos = next;
-      changed = true;
+      const next = { ...state.deletedTodos }
+      delete next[todo.ID]
+      state.deletedTodos = next
+      changed = true
     }
 
-    const local = localTodos.get(todo.ID);
+    const local = localTodos.get(todo.ID)
 
     if (!local || todo.updatedAT > local.updatedAT) {
-      localTodos.set(todo.ID, todo);
-      changed = true;
+      localTodos.set(todo.ID, todo)
+      changed = true
     }
   }
 
   const nextTodos = [...localTodos.values()].filter(
     (todo) => !state.deletedTodos[todo.ID],
-  );
+  )
 
-  if (nextTodos.length !== state.todos.length) changed = true;
+  if (nextTodos.length !== state.todos.length) changed = true
 
-  state.todos = nextTodos;
+  state.todos = nextTodos
 
-  const localTags = new Map(state.tags.map((tag) => [tag.ID, tag]));
+  const localTags = new Map(state.tags.map((tag) => [tag.ID, tag]))
 
   for (const tag of remote.tags) {
-    const tombstoneAt = state.deletedTags[tag.ID];
+    const tombstoneAt = state.deletedTags[tag.ID]
 
     if (tombstoneAt !== undefined) {
-      if (tag.updatedAT <= tombstoneAt) continue;
+      if (tag.updatedAT <= tombstoneAt) continue
 
-      const next = { ...state.deletedTags };
-      delete next[tag.ID];
-      state.deletedTags = next;
-      changed = true;
+      const next = { ...state.deletedTags }
+      delete next[tag.ID]
+      state.deletedTags = next
+      changed = true
     }
 
-    const local = localTags.get(tag.ID);
+    const local = localTags.get(tag.ID)
 
     if (!local || tag.updatedAT > local.updatedAT) {
-      localTags.set(tag.ID, tag);
-      changed = true;
+      localTags.set(tag.ID, tag)
+      changed = true
     }
   }
 
   const nextTags = [...localTags.values()].filter(
     (tag) => !state.deletedTags[tag.ID],
-  );
+  )
 
-  if (nextTags.length !== state.tags.length) changed = true;
+  if (nextTags.length !== state.tags.length) changed = true
 
-  state.tags = nextTags;
+  state.tags = nextTags
 
-  if (normalizeAttachments(state.todos)) changed = true;
+  if (normalizeAttachments(state.todos)) changed = true
 
-  return changed;
-};
+  return changed
+}
 
 const attachmentRoot = async (): Promise<string> => {
-  const dirs = await paths.get();
+  const dirs = await paths.get()
 
-  return `${dirs.data}/attachments`;
-};
+  return `${dirs.data}/attachments`
+}
 
 const ensureThumb = async (
   base: string,
@@ -161,163 +161,163 @@ const ensureThumb = async (
   todo: Todo,
   file: Attachment,
 ): Promise<boolean> => {
-  if (!isVideo(file.name)) return false;
+  if (!isVideo(file.name)) return false
 
-  const local = thumbPath(root, todo.ID, file);
+  const local = thumbPath(root, todo.ID, file)
 
   try {
-    if (file.thumb && (await fs.exists(file.thumb))) return false;
+    if (file.thumb && (await fs.exists(file.thumb))) return false
 
     if (await fs.exists(local)) {
-      file.thumb = local;
+      file.thumb = local
 
-      return true;
+      return true
     }
 
-    const key = attachmentKey(todo.ID, file);
-    const url = `${base}/file?key=${encodeURIComponent(`thumb:${key}`)}`;
+    const key = attachmentKey(todo.ID, file)
+    const url = `${base}/file?key=${encodeURIComponent(`thumb:${key}`)}`
     const response = await net.fetch(url, {
       headers: syncHeaders(),
       timeoutMs: 10000,
-    });
+    })
 
-    if (response.status !== 200) return false;
+    if (response.status !== 200) return false
 
-    const parsed = JSON.parse(response.text) as unknown;
+    const parsed = JSON.parse(response.text) as unknown
 
-    if (!isRecord(parsed) || typeof parsed.data !== "string") return false;
+    if (!isRecord(parsed) || typeof parsed.data !== "string") return false
 
-    await fs.mkdir(`${root}/${todo.ID}`);
-    await fs.writeFile(local, parsed.data, "base64");
+    await fs.mkdir(`${root}/${todo.ID}`)
+    await fs.writeFile(local, parsed.data, "base64")
 
-    file.thumb = local;
+    file.thumb = local
 
-    return true;
+    return true
   } catch {
-    return false;
+    return false
   }
-};
+}
 
 const uploadFiles = async (
   base: string,
   serverFiles: string[],
 ): Promise<boolean> => {
-  const known = new Set(serverFiles);
-  const root = await attachmentRoot();
+  const known = new Set(serverFiles)
+  const root = await attachmentRoot()
 
-  let changed = false;
+  let changed = false
 
   for (const todo of state.todos) {
     for (const file of todo.files) {
-      const key = attachmentKey(todo.ID, file);
+      const key = attachmentKey(todo.ID, file)
 
       if (!file.key) {
-        file.key = key;
-        changed = true;
+        file.key = key
+        changed = true
       }
 
       if (!known.has(key)) {
         try {
           if (await fs.exists(file.path)) {
-            const data = await fs.readFile(file.path, "base64");
-            const url = `${base}/file?key=${encodeURIComponent(key)}`;
+            const data = await fs.readFile(file.path, "base64")
+            const url = `${base}/file?key=${encodeURIComponent(key)}`
 
             await net.fetch(url, {
               method: "PUT",
               headers: syncHeaders(),
               body: JSON.stringify({ data }),
               timeoutMs: 10000,
-            });
+            })
           }
         } catch {}
       }
 
-      if (await ensureThumb(base, root, todo, file)) changed = true;
+      if (await ensureThumb(base, root, todo, file)) changed = true
     }
   }
 
-  return changed;
-};
+  return changed
+}
 
 const downloadFiles = async (
   base: string,
   serverFiles: string[],
 ): Promise<boolean> => {
-  const known = new Set(serverFiles);
-  const root = await attachmentRoot();
+  const known = new Set(serverFiles)
+  const root = await attachmentRoot()
 
-  let changed = false;
+  let changed = false
 
   for (const todo of state.todos) {
     for (const file of todo.files) {
-      const key = attachmentKey(todo.ID, file);
+      const key = attachmentKey(todo.ID, file)
 
       if (!file.key) {
-        file.key = key;
-        changed = true;
+        file.key = key
+        changed = true
       }
 
       if (known.has(key) && !(await fs.exists(file.path).catch(() => true))) {
         try {
-          const destination = `${root}/${todo.ID}/${baseName(file.path)}`;
-          const url = `${base}/file?key=${encodeURIComponent(key)}`;
+          const destination = `${root}/${todo.ID}/${baseName(file.path)}`
+          const url = `${base}/file?key=${encodeURIComponent(key)}`
           const response = await net.fetch(url, {
             headers: syncHeaders(),
             timeoutMs: 10000,
-          });
+          })
 
           if (response.status === 200) {
-            const parsed = JSON.parse(response.text) as unknown;
+            const parsed = JSON.parse(response.text) as unknown
 
             if (isRecord(parsed) && typeof parsed.data === "string") {
-              await fs.mkdir(`${root}/${todo.ID}`);
-              await fs.writeFile(destination, parsed.data, "base64");
+              await fs.mkdir(`${root}/${todo.ID}`)
+              await fs.writeFile(destination, parsed.data, "base64")
 
-              file.path = destination;
+              file.path = destination
 
               try {
-                const info = await fs.stat(destination);
+                const info = await fs.stat(destination)
 
-                file.size = info.size;
+                file.size = info.size
               } catch {}
 
-              changed = true;
+              changed = true
             }
           }
         } catch {}
       }
 
       if (known.has(key) && (await ensureThumb(base, root, todo, file)))
-        changed = true;
+        changed = true
     }
   }
 
-  return changed;
-};
+  return changed
+}
 
 export const deleteRemoteFile = async (key: string): Promise<void> => {
-  const base = syncBase();
+  const base = syncBase()
 
-  if (!base || !key) return;
+  if (!base || !key) return
 
   try {
     await net.fetch(`${base}/file?key=${encodeURIComponent(key)}`, {
       method: "DELETE",
       headers: syncHeaders(),
       timeoutMs: 5000,
-    });
+    })
   } catch {}
-};
+}
 
 export const push = async (): Promise<void> => {
-  const base = syncBase();
+  const base = syncBase()
 
   if (!base) {
-    setStatus("off");
-    return;
+    setStatus("off")
+    return
   }
 
-  state.sync.dirty = true;
+  state.sync.dirty = true
 
   try {
     const response = await net.fetch(`${base}/state`, {
@@ -330,83 +330,83 @@ export const push = async (): Promise<void> => {
         deletedTags: state.deletedTags,
       }),
       timeoutMs: 5000,
-    });
+    })
 
     if (response.status < 200 || response.status >= 300)
-      throw new Error(`sync failed: ${response.status}`);
+      throw new Error(`sync failed: ${response.status}`)
 
-    const remote = parseState(response.text);
+    const remote = parseState(response.text)
 
-    let changed = remote ? applyRemote(remote) : false;
+    let changed = remote ? applyRemote(remote) : false
 
-    if (await uploadFiles(base, remote?.files ?? [])) changed = true;
+    if (await uploadFiles(base, remote?.files ?? [])) changed = true
 
-    state.sync.dirty = false;
-    void persistState();
+    state.sync.dirty = false
+    void persistState()
 
-    if (changed) refresh();
+    if (changed) refresh()
 
-    setStatus("ok");
+    setStatus("ok")
   } catch {
-    setStatus("error");
+    setStatus("error")
   }
-};
+}
 
 export const pull = async (): Promise<void> => {
-  const base = syncBase();
+  const base = syncBase()
 
-  if (!base || state.sync.dirty) return;
+  if (!base || state.sync.dirty) return
 
   try {
     const response = await net.fetch(`${base}/state`, {
       headers: syncHeaders(),
       timeoutMs: 5000,
-    });
+    })
 
     if (response.status < 200 || response.status >= 300)
-      throw new Error(`sync failed: ${response.status}`);
+      throw new Error(`sync failed: ${response.status}`)
 
-    const remote = parseState(response.text);
+    const remote = parseState(response.text)
 
-    setStatus("ok");
+    setStatus("ok")
 
-    if (!remote) return;
+    if (!remote) return
 
-    let changed = applyRemote(remote);
+    let changed = applyRemote(remote)
 
-    if (await downloadFiles(base, remote.files)) changed = true;
+    if (await downloadFiles(base, remote.files)) changed = true
 
     if (changed) {
-      refresh();
-      void persistState();
+      refresh()
+      void persistState()
     }
   } catch {
-    setStatus("error");
+    setStatus("error")
   }
-};
+}
 
 export const syncNow = async (): Promise<void> => {
-  if (!state.syncSettings.host) return;
+  if (!state.syncSettings.host) return
 
-  if (state.sync.dirty) await push();
-  else await pull();
-};
+  if (state.sync.dirty) await push()
+  else await pull()
+}
 
 export const saveSyncConnection = async (params: {
-  host?: unknown;
-  port?: unknown;
-  password?: unknown;
+  host?: unknown
+  port?: unknown
+  password?: unknown
 }): Promise<void> => {
-  const host = typeof params?.host === "string" ? params.host.trim() : "";
-  const port = typeof params?.port === "string" ? params.port.trim() : "";
-  const password = typeof params?.password === "string" ? params.password : "";
+  const host = typeof params?.host === "string" ? params.host.trim() : ""
+  const port = typeof params?.port === "string" ? params.port.trim() : ""
+  const password = typeof params?.password === "string" ? params.password : ""
 
-  const settings: SyncSettings = { host, port: port || "8787", password };
+  const settings: SyncSettings = { host, port: port || "8787", password }
 
-  await writeSyncSettings(settings);
+  await writeSyncSettings(settings)
 
-  state.sync.dirty = false;
-  setStatus(host ? "idle" : "off");
+  state.sync.dirty = false
+  setStatus(host ? "idle" : "off")
 
-  if (host) await push();
-};
+  if (host) await push()
+}

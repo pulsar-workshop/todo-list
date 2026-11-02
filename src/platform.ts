@@ -1,7 +1,7 @@
 export const isAndroid = (): boolean => {
-  return typeof Bun === "undefined";
-};
+  return typeof Bun === "undefined"
+}
 
 export const isMac = (): boolean => {
-  return typeof process !== "undefined" && process.platform === "darwin";
-};
+  return typeof process !== "undefined" && process.platform === "darwin"
+}

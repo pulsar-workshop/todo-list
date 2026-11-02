@@ -1,4 +1,4 @@
-import { app } from "./state.ts";
+import { app } from "./state.ts"
 
 export const installMenu = (): void => {
   app.setMenu([
@@ -13,5 +13,5 @@ export const installMenu = (): void => {
         { id: "quit", label: "Выход", shortcut: "Ctrl+Q" },
       ],
     },
-  ]);
-};
+  ])
+}
