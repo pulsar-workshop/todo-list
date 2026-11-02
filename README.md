@@ -1,19 +1,35 @@
 # Todo List
 
-A minimal todo list built with [Pulsar](https://github.com/riclud/pulsar) (QML UI + Bun backend).
+A minimal todo list built with [Pulsar](https://github.com/riclud/pulsar) (TypeScript UI + Bun backend).
 
 Add a task, mark it done, or delete it. Each task can be renamed, described,
 given a start and end time (or just a deadline), tags with colors, subtasks and
 attached files. Tasks are persisted in the app data directory.
 
-The task menu copies or shares a task, sync failures raise a native
+The task editor copies or shares a task, sync failures raise a native
 notification, and macOS gets a native menu bar. `Ctrl+N` focuses the new-task
-field, `Ctrl+R` syncs immediately and `Ctrl+,` opens the sync settings.
+field, `Ctrl+R` syncs immediately and `Ctrl+,` opens the sync settings. The
+theme follows the system light/dark scheme and can be switched from the header.
 
 ## Requirements
 
 - [Bun](https://bun.sh) (the Pulsar CLI runs on Bun)
 - The Pulsar toolchain 1.2.3 or newer: run `pulsar install` once
+
+## Project layout
+
+```
+src/
+  main.ts        entry point and event wiring
+  actions.ts     task and attachment actions
+  sync.ts        server merge, push and pull
+  storage.ts     local persistence
+  state.ts       shared state and UI store helpers
+  model.ts       parsing and attachment keys
+  format.ts      date and text formatting
+  theme.ts       light/dark palette
+  ui/            screens and components
+```
 
 ## Develop
 
@@ -139,6 +155,6 @@ checkpoints the WAL, so `DB` can be backed up on its own after it stops.
 ## Permissions
 
 `pulsar.json` lists the capabilities the app uses: `storage`, `fs`, `paths`,
-`dialog`, `net`, `clipboard`, `share`, `notify` and `permissions`. A listed set
+`dialog`, `net`, `clipboard`, `share`, `notify`, `permissions` and `theme`. A listed set
 is a whitelist, so every capability the app calls must be present.
 `osPermissions` declares the Android notification permission.
