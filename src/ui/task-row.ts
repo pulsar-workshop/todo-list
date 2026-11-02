@@ -5,6 +5,7 @@ import {
   Checkbox,
   Column,
   Row,
+  Spacer,
   Text,
   defineComponent,
   type ColorValue,
@@ -99,6 +100,7 @@ export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
           ? Row({ gap: 10, fillWidth: true }, ...tagLabels)
           : null,
       ),
+      Spacer({ fillWidth: true }),
       Button({
         variant: "ghost",
         icon: "edit",
