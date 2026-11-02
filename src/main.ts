@@ -39,13 +39,13 @@ const start = async (): Promise<void> => {
   await loadSyncSettings()
   await restore()
 
-  if (state.sync.dirty) await push()
-  else await pull()
-
   await watchTheme()
 
   app.window("main").render(renderApp)
   app.run()
+
+  if (state.sync.dirty) void push()
+  else void pull()
 
   setInterval(() => {
     if (!state.syncSettings.host) return
