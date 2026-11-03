@@ -37,7 +37,6 @@ import {
   removeDraftFile,
   removeDraftSubtask,
   saveDraft,
-  shareDraft,
   toggleDraftTag,
   updateDraft,
   updateDraftSubtask,
@@ -163,13 +162,6 @@ const footer = () =>
       size: "sm",
       tooltip: "Копировать",
       onClick: () => void copyDraft(),
-    }),
-    Button({
-      variant: "ghost",
-      icon: "share",
-      size: "sm",
-      tooltip: "Поделиться",
-      onClick: () => void shareDraft(),
     }),
   )
 
