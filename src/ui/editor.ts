@@ -181,7 +181,7 @@ export const EditorPage = () => {
   const tagColor = uiValue("tagColor", TAG_PALETTE[3]!)
 
   return Box(
-    { fill: true, color: backgroundColor() },
+    { key: "editor", fill: true, color: backgroundColor() },
     Page(
       { padding: 16, gap: 10, header: header(), footer: footer() },
       Input({

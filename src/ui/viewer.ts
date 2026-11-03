@@ -6,7 +6,7 @@ export const ViewerPage = () => {
   const path = uiValue("viewerPath", "")
 
   return Box(
-    { fill: true, color: backgroundColor() },
+    { key: "viewer", fill: true, color: backgroundColor() },
     Page(
       {
         padding: 8,

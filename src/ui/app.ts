@@ -89,7 +89,7 @@ const MainPage = () => {
   const focus = uiValue("newTaskFocus", false)
 
   return Box(
-    { fill: true, color: backgroundColor() },
+    { key: "main", fill: true, color: backgroundColor() },
     Page(
       { padding: 20, gap: 14, header: HeaderRow() },
       Card(

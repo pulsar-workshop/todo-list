@@ -5,7 +5,7 @@ import { closeSync, saveSyncForm } from "./state.ts"
 
 export const SyncPage = () =>
   Box(
-    { fill: true, color: backgroundColor() },
+    { key: "sync", fill: true, color: backgroundColor() },
     Page(
       {
         padding: 16,
