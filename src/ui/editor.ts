@@ -32,6 +32,7 @@ import {
   createDraftTag,
   deleteDraft,
   openAttachment,
+  openCalendar,
   pickCustomTagColor,
   removeDraftFile,
   removeDraftSubtask,
@@ -40,6 +41,7 @@ import {
   updateDraft,
   updateDraftSubtask,
 } from "./state.ts"
+import { CalendarSheet } from "./calendar.ts"
 import { TagChip } from "./tag-chip.ts"
 
 const section = (text: string) =>
@@ -164,6 +166,31 @@ const footer = () =>
     }),
   )
 
+const dateInput = (key: string) =>
+  Row(
+    { gap: 4, fillWidth: true, align: "center" },
+    Input({
+      value: uiValue(key, ""),
+      variant: "outline",
+      textColor: textColor(false),
+      readOnly: true,
+      placeholder: "ДД.ММ.ГГГГ",
+      expand: true,
+    }),
+    IconButton({
+      icon: "calendar_month",
+      tooltip: "Выбрать дату",
+      onClick: () => openCalendar(key),
+    }),
+  )
+
+const dateField = (label: string, key: string) =>
+  Column(
+    { gap: 4, expand: true },
+    Text({ text: label, size: 11, color: textColor(true) }),
+    dateInput(key),
+  )
+
 export const EditorPage = () => {
   const draft = getDraft()
   const editorError = uiValue("editorError", "")
@@ -193,39 +220,19 @@ export const EditorPage = () => {
         onInput: (value) => updateDraft({ description: value }),
       }),
       Text({
-        text: "Формат даты: ДД.ММ.ГГГГ ЧЧ:ММ:СС. Время можно не указывать.",
+        text: "Дату выберите в календаре. Время сохраняется.",
         size: 11,
         color: textColor(true),
       }),
       Row(
-        { gap: 8, fillWidth: true },
-        Input({
-          value: uiValue("draftStart", ""),
-          variant: "outline",
-          textColor: textColor(false),
-          placeholder: "с",
-          expand: true,
-          onInput: (value) => setUI("draftStart", value),
-        }),
-        Input({
-          value: uiValue("draftEnd", ""),
-          variant: "outline",
-          textColor: textColor(false),
-          placeholder: "до (дедлайн)",
-          expand: true,
-          onInput: (value) => setUI("draftEnd", value),
-        }),
+        { gap: 8, fillWidth: true, align: "start" },
+        dateField("С", "draftStart"),
+        dateField("До (дедлайн)", "draftEnd"),
       ),
       Row(
         { gap: 8, fillWidth: true, align: "center" },
         Text({ text: "Создано", size: 12, color: textColor(true), width: 76 }),
-        Input({
-          value: uiValue("draftCreated", ""),
-          variant: "outline",
-          textColor: textColor(false),
-          expand: true,
-          onInput: (value) => setUI("draftCreated", value),
-        }),
+        dateInput("draftCreated"),
       ),
       draft && draft.completedAT !== null
         ? Row(
@@ -236,13 +243,7 @@ export const EditorPage = () => {
               color: textColor(true),
               width: 76,
             }),
-            Input({
-              value: uiValue("draftCompleted", ""),
-              variant: "outline",
-              textColor: textColor(false),
-              expand: true,
-              onInput: (value) => setUI("draftCompleted", value),
-            }),
+            dateInput("draftCompleted"),
           )
         : null,
       editorError
@@ -374,6 +375,7 @@ export const EditorPage = () => {
         },
         "Прикрепить файл",
       ),
+      uiValue("calendarOpen", false) ? CalendarSheet() : null,
     ),
   )
 }

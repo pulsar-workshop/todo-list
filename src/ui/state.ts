@@ -49,6 +49,64 @@ export const closeEditor = (): void => {
   setUI("editorError", "")
 }
 
+const dateParts = (value: string): { day: number; month: number; year: number } | null => {
+  const match = /^(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(value.trim())
+
+  if (!match) return null
+
+  return {
+    day: Number(match[1]),
+    month: Number(match[2]),
+    year: Number(match[3]),
+  }
+}
+
+export const openCalendar = (target: string): void => {
+  const parts = dateParts(uiValue(target, ""))
+  const now = new Date()
+
+  setUI("calendarTarget", target)
+  setUI("calendarYear", parts?.year ?? now.getFullYear())
+  setUI("calendarMonth", parts ? parts.month - 1 : now.getMonth())
+  setUI("calendarOpen", true)
+}
+
+export const closeCalendar = (): void => {
+  setUI("calendarOpen", false)
+}
+
+export const shiftCalendar = (delta: number): void => {
+  const year = uiValue("calendarYear", new Date().getFullYear())
+  const month = uiValue("calendarMonth", new Date().getMonth())
+  const next = new Date(year, month + delta, 1)
+
+  setUI("calendarYear", next.getFullYear())
+  setUI("calendarMonth", next.getMonth())
+}
+
+export const pickCalendarDay = (day: number): void => {
+  const target = uiValue("calendarTarget", "")
+
+  if (!target) return
+
+  const year = uiValue("calendarYear", new Date().getFullYear())
+  const month = uiValue("calendarMonth", new Date().getMonth())
+  const current = uiValue(target, "")
+  const time = current.includes(" ") ? current.split(" ")[1] : ""
+  const date = `${String(day).padStart(2, "0")}.${String(month + 1).padStart(2, "0")}.${year}`
+
+  setUI(target, time ? `${date} ${time}` : date)
+  closeCalendar()
+}
+
+export const pickCalendarToday = (): void => {
+  const now = new Date()
+
+  setUI("calendarYear", now.getFullYear())
+  setUI("calendarMonth", now.getMonth())
+  pickCalendarDay(now.getDate())
+}
+
 export const updateDraft = (patch: Partial<Todo>): void => {
   const draft = getDraft()
 
