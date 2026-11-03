@@ -1,10 +1,10 @@
 import {
-  BottomSheet,
   Box,
   Button,
   Grid,
   IconButton,
   Row,
+  Sheet,
   Text,
   type UiNode,
 } from "pulsar"
@@ -81,11 +81,10 @@ export const CalendarSheet = () => {
     )
   }
 
-  return BottomSheet(
+  return Sheet(
     {
       open: true,
       title: "Выберите дату",
-      handle: true,
       onClose: closeCalendar,
     },
     Row(

@@ -207,6 +207,7 @@ export const EditorPage = () => {
         placeholder: "Название",
         variant: "outline",
         textColor: textColor(false),
+        height: 48,
         fillWidth: true,
         onInput: (value) => updateDraft({ text: value }),
       }),
