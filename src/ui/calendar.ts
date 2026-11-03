@@ -3,8 +3,8 @@ import {
   Button,
   Grid,
   IconButton,
+  Input,
   Row,
-  Select,
   Sheet,
   Text,
   type UiNode,
@@ -35,16 +35,17 @@ const MONTHS = [
   "Декабрь",
 ]
 
-const unitOptions = (count: number) =>
-  Array.from({ length: count }, (_, index) => {
-    const value = String(index).padStart(2, "0")
-
-    return { value, label: value }
+const timeInput = (key: string, placeholder: string) =>
+  Input({
+    value: uiValue(key, ""),
+    placeholder,
+    variant: "outline",
+    textColor: textColor(false),
+    keyboardType: "number",
+    maxLength: 2,
+    width: 56,
+    onInput: (value) => setUI(key, value.replace(/\D/g, "").slice(0, 2)),
   })
-
-const HOURS = [{ value: "", label: "—" }, ...unitOptions(24)]
-const MINUTES = unitOptions(60)
-const SECONDS = unitOptions(60)
 
 const selectedParts = (
   value: string,
@@ -136,30 +137,15 @@ export const CalendarSheet = () => {
       },
       ...cells,
     ),
+    Box({ height: 10 }),
+    Text({ text: "Время (необязательно)", size: 11, color: textColor(true) }),
     Row(
       { gap: 6, fillWidth: true, align: "center" },
-      Select({
-        options: HOURS,
-        value: uiValue("calendarHour", ""),
-        width: 84,
-        onChange: (value) => setUI("calendarHour", String(value)),
-      }),
+      timeInput("calendarHour", "ЧЧ"),
       Text({ text: ":", size: 16, color: textColor(false) }),
-      Select({
-        options: MINUTES,
-        value: uiValue("calendarMinute", "00"),
-        width: 84,
-        enabled: uiValue("calendarHour", "") !== "",
-        onChange: (value) => setUI("calendarMinute", String(value)),
-      }),
+      timeInput("calendarMinute", "ММ"),
       Text({ text: ":", size: 16, color: textColor(false) }),
-      Select({
-        options: SECONDS,
-        value: uiValue("calendarSecond", "00"),
-        width: 84,
-        enabled: uiValue("calendarHour", "") !== "",
-        onChange: (value) => setUI("calendarSecond", String(value)),
-      }),
+      timeInput("calendarSecond", "СС"),
     ),
     Button({ variant: "ghost", onClick: pickCalendarToday }, "Сегодня"),
   )

@@ -71,8 +71,8 @@ export const openCalendar = (target: string): void => {
   setUI("calendarYear", parts?.year ?? now.getFullYear())
   setUI("calendarMonth", parts ? parts.month - 1 : now.getMonth())
   setUI("calendarHour", time ? String(Number(time[1])).padStart(2, "0") : "")
-  setUI("calendarMinute", time ? String(Number(time[2])).padStart(2, "0") : "00")
-  setUI("calendarSecond", time ? String(Number(time[3])).padStart(2, "0") : "00")
+  setUI("calendarMinute", time ? String(Number(time[2])).padStart(2, "0") : "")
+  setUI("calendarSecond", time ? String(Number(time[3])).padStart(2, "0") : "")
   setUI("calendarOpen", true)
 }
 
@@ -96,12 +96,19 @@ export const pickCalendarDay = (day: number): void => {
 
   const year = uiValue("calendarYear", new Date().getFullYear())
   const month = uiValue("calendarMonth", new Date().getMonth())
-  const hour = uiValue("calendarHour", "")
-  const minute = uiValue("calendarMinute", "00")
-  const second = uiValue("calendarSecond", "00")
+  const rawHour = uiValue("calendarHour", "").trim()
+  const rawMinute = uiValue("calendarMinute", "").trim()
+  const rawSecond = uiValue("calendarSecond", "").trim()
   const date = `${String(day).padStart(2, "0")}.${String(month + 1).padStart(2, "0")}.${year}`
+  const pad = (value: string, max: number) =>
+    String(Math.min(Number(value) || 0, max)).padStart(2, "0")
 
-  setUI(target, hour ? `${date} ${hour}:${minute}:${second}` : date)
+  setUI(
+    target,
+    rawHour
+      ? `${date} ${pad(rawHour, 23)}:${pad(rawMinute, 59)}:${pad(rawSecond, 59)}`
+      : date,
+  )
   closeCalendar()
 }
 
