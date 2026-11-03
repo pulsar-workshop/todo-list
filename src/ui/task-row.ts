@@ -76,6 +76,7 @@ export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
           text: todo.text,
           size: 15,
           weight: "semibold",
+          strike: todo.done,
           fillWidth: true,
           maxLines: 2,
           elide: "right",

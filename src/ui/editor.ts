@@ -18,11 +18,11 @@ import {
   type ColorValue,
 } from "pulsar"
 import { deleteTag, exportAttachment } from "../actions.ts"
-import { fileMeta } from "../format.ts"
+import { fileMeta, formatDateValue } from "../format.ts"
 import { isImage } from "../model.ts"
 import { fileURL, getDraft, state, uiValue, setUI } from "../state.ts"
 import { backgroundColor, borderColor, textColor } from "../theme.ts"
-import type { Attachment } from "../types.ts"
+import type { Attachment, Subtask } from "../types.ts"
 import {
   TAG_PALETTE,
   addDraftSubtask,
@@ -89,6 +89,15 @@ const attachmentIcon = (file: Attachment) => {
     { width: 44, height: 44, radius: 8, color: "surface", align: "center" },
     Icon({ name: "attach_file", size: 20, color: textColor(true) }),
   )
+}
+
+const subtaskMeta = (subtask: Subtask): string => {
+  const parts = [`Создано: ${formatDateValue(subtask.createdAT, false)}`]
+
+  if (subtask.completedAT !== null)
+    parts.push(`Завершено: ${formatDateValue(subtask.completedAT, false)}`)
+
+  return parts.join(" · ")
 }
 
 const attachmentRow = (file: Attachment) =>
@@ -333,13 +342,23 @@ export const EditorPage = () => {
                   completedAT: done ? Date.now() : null,
                 }),
             }),
-            Input({
-              value: subtask.text,
-              variant: "outline",
-              textColor: textColor(false),
-              expand: true,
-              onInput: (value) => updateDraftSubtask(index, { text: value }),
-            }),
+            Column(
+              { gap: 2, expand: true },
+              Input({
+                value: subtask.text,
+                variant: "outline",
+                textColor: subtask.done ? textColor(true) : textColor(false),
+                strike: subtask.done,
+                fillWidth: true,
+                onInput: (value) => updateDraftSubtask(index, { text: value }),
+              }),
+              Text({
+                text: subtaskMeta(subtask),
+                size: 11,
+                color: textColor(true),
+                fillWidth: true,
+              }),
+            ),
             IconButton({
               icon: "close",
               tooltip: "Удалить",
