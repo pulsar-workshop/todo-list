@@ -287,15 +287,26 @@ export const EditorPage = () => {
             onClick: () => setUI("tagColor", color),
           }),
         ),
-        IconButton({
-          icon: "palette",
-          size: 20,
-          color: TAG_PALETTE.includes(tagColor)
-            ? textColor(true)
-            : (tagColor as ColorValue),
-          tooltip: "Свой цвет",
-          onClick: () => void pickCustomTagColor(),
-        }),
+        Stack(
+          { width: 30, height: 30 },
+          Box({
+            width: 30,
+            height: 30,
+            radius: 15,
+            gradient: {
+              from: "#f43f5e",
+              to: "#0ea5e9",
+              direction: "horizontal",
+            },
+            borderWidth: TAG_PALETTE.includes(tagColor) ? 1 : 2,
+            borderColor: TAG_PALETTE.includes(tagColor)
+              ? borderColor()
+              : textColor(false),
+            tooltip: "Свой цвет",
+            onClick: () => void pickCustomTagColor(),
+          }),
+          Icon({ name: "add", size: 16, color: "#ffffff", align: "center" }),
+        ),
       ),
       Divider(),
       section("ПОДЗАДАЧИ"),
