@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   Column,
   Divider,
   Icon,
@@ -334,13 +333,19 @@ export const EditorPage = () => {
         ...(draft?.subtasks ?? []).map((subtask, index) =>
           Row(
             { gap: 6, fillWidth: true, align: "center" },
-            Checkbox({
-              checked: subtask.done,
-              onToggle: (done) =>
+            Button({
+              variant: "ghost",
+              icon: subtask.done ? "check_box" : "check_box_outline_blank",
+              size: "sm",
+              tooltip: subtask.done ? "Снять отметку" : "Готово",
+              onClick: () => {
+                const done = !subtask.done
+
                 updateDraftSubtask(index, {
                   done,
                   completedAT: done ? Date.now() : null,
-                }),
+                })
+              },
             }),
             Column(
               { gap: 2, expand: true },
