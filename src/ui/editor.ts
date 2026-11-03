@@ -188,6 +188,7 @@ export const EditorPage = () => {
         value: draft?.text ?? "",
         placeholder: "Название",
         variant: "outline",
+        textColor: textColor(false),
         fillWidth: true,
         onInput: (value) => updateDraft({ text: value }),
       }),
@@ -195,6 +196,7 @@ export const EditorPage = () => {
         value: draft?.description ?? "",
         placeholder: "Описание",
         variant: "outline",
+        textColor: textColor(false),
         lines: 3,
         fillWidth: true,
         onInput: (value) => updateDraft({ description: value }),
@@ -209,6 +211,7 @@ export const EditorPage = () => {
         Input({
           value: uiValue("draftStart", ""),
           variant: "outline",
+          textColor: textColor(false),
           placeholder: "с",
           expand: true,
           onInput: (value) => setUI("draftStart", value),
@@ -216,6 +219,7 @@ export const EditorPage = () => {
         Input({
           value: uiValue("draftEnd", ""),
           variant: "outline",
+          textColor: textColor(false),
           placeholder: "до (дедлайн)",
           expand: true,
           onInput: (value) => setUI("draftEnd", value),
@@ -227,6 +231,7 @@ export const EditorPage = () => {
         Input({
           value: uiValue("draftCreated", ""),
           variant: "outline",
+          textColor: textColor(false),
           expand: true,
           onInput: (value) => setUI("draftCreated", value),
         }),
@@ -243,6 +248,7 @@ export const EditorPage = () => {
             Input({
               value: uiValue("draftCompleted", ""),
               variant: "outline",
+              textColor: textColor(false),
               expand: true,
               onInput: (value) => setUI("draftCompleted", value),
             }),
@@ -268,6 +274,7 @@ export const EditorPage = () => {
         Input({
           value: uiValue("tagName", ""),
           variant: "outline",
+          textColor: textColor(false),
           placeholder: "Новый тег",
           expand: true,
           onInput: (value) => setUI("tagName", value),
@@ -309,6 +316,7 @@ export const EditorPage = () => {
             Input({
               value: subtask.text,
               variant: "outline",
+              textColor: textColor(false),
               expand: true,
               onInput: (value) => updateDraftSubtask(index, { text: value }),
             }),
@@ -324,6 +332,7 @@ export const EditorPage = () => {
         Input({
           value: uiValue("subtaskText", ""),
           variant: "outline",
+          textColor: textColor(false),
           placeholder: "Новая подзадача",
           expand: true,
           onInput: (value) => setUI("subtaskText", value),
@@ -342,6 +351,7 @@ export const EditorPage = () => {
       Button(
         {
           variant: "outline",
+          textColor: textColor(false),
           icon: "attach_file",
           onClick: () => void attachDraftFiles(),
         },

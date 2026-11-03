@@ -107,6 +107,7 @@ const MainPage = () => {
             value: uiValue("newTaskText", ""),
             placeholder: "Что нужно сделать?",
             variant: "outline",
+            textColor: textColor(false),
             expand: true,
             autoFocus: focus,
             onInput: (value) => setUI("newTaskText", value),
