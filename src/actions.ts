@@ -147,6 +147,50 @@ export const addTag = (params: {
   return tag
 }
 
+export const deleteTag = async (params: { ID?: unknown }): Promise<void> => {
+  const ID = typeof params?.ID === "string" ? params.ID : ""
+  const tag = state.tags.find((item) => item.ID === ID)
+
+  if (!tag) return
+
+  const ok = await dialog.message({
+    title: "Удалить тег?",
+    text: `Тег «${tag.name}» исчезнет у всех задач.`,
+  })
+
+  if (!ok) return
+
+  const now = Date.now()
+
+  state.deletedTags = { ...state.deletedTags, [ID]: now }
+  state.tags = state.tags.filter((item) => item.ID !== ID)
+  state.todos = state.todos.map((todo) => {
+    if (!todo.tags.includes(ID)) return todo
+
+    return {
+      ...todo,
+      tags: todo.tags.filter((tagID) => tagID !== ID),
+      updatedAT: now,
+    }
+  })
+
+  const draft = app.store.get("draft")
+
+  if (draft && typeof draft === "object") {
+    const record = draft as Todo
+
+    if (Array.isArray(record.tags)) {
+      app.store.set("draft", {
+        ...record,
+        tags: record.tags.filter((tagID) => tagID !== ID),
+      })
+    }
+  }
+
+  refresh()
+  save()
+}
+
 export const pickFiles = async (params: {
   ID?: unknown
 }): Promise<Attachment[]> => {

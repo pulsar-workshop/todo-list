@@ -5,7 +5,8 @@ export const TagChip = defineComponent<{
   tag: Tag
   selected?: boolean
   onClick?: () => void
-}>(({ tag, selected, onClick }) =>
+  onRemove?: () => void
+}>(({ tag, selected, onClick, onRemove }) =>
   Chip(
     {
       variant: "outline",
@@ -14,6 +15,7 @@ export const TagChip = defineComponent<{
       selected,
       selectedColor: tag.color as ColorValue,
       onClick,
+      onRemove,
     },
     tag.name,
   ),

@@ -17,7 +17,7 @@ import {
   Wrap,
   type ColorValue,
 } from "pulsar"
-import { exportAttachment } from "../actions.ts"
+import { deleteTag, exportAttachment } from "../actions.ts"
 import { fileMeta } from "../format.ts"
 import { isImage } from "../model.ts"
 import { fileURL, getDraft, state, uiValue, setUI } from "../state.ts"
@@ -257,6 +257,7 @@ export const EditorPage = () => {
             tag,
             selected: currentTags.includes(tag.ID),
             onClick: () => toggleDraftTag(tag.ID),
+            onRemove: () => void deleteTag({ ID: tag.ID }),
           }),
         ),
       ),
