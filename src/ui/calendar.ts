@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Checkbox,
   Grid,
   IconButton,
   Row,
@@ -43,7 +42,7 @@ const unitOptions = (count: number) =>
     return { value, label: value }
   })
 
-const HOURS = unitOptions(24)
+const HOURS = [{ value: "", label: "—" }, ...unitOptions(24)]
 const MINUTES = unitOptions(60)
 const SECONDS = unitOptions(60)
 
@@ -137,38 +136,31 @@ export const CalendarSheet = () => {
       },
       ...cells,
     ),
-    Checkbox(
-      {
-        checked: uiValue("calendarAllDay", true),
-        onToggle: (value) => setUI("calendarAllDay", value),
-      },
-      "Весь день",
+    Row(
+      { gap: 6, fillWidth: true, align: "center" },
+      Select({
+        options: HOURS,
+        value: uiValue("calendarHour", ""),
+        width: 84,
+        onChange: (value) => setUI("calendarHour", String(value)),
+      }),
+      Text({ text: ":", size: 16, color: textColor(false) }),
+      Select({
+        options: MINUTES,
+        value: uiValue("calendarMinute", "00"),
+        width: 84,
+        enabled: uiValue("calendarHour", "") !== "",
+        onChange: (value) => setUI("calendarMinute", String(value)),
+      }),
+      Text({ text: ":", size: 16, color: textColor(false) }),
+      Select({
+        options: SECONDS,
+        value: uiValue("calendarSecond", "00"),
+        width: 84,
+        enabled: uiValue("calendarHour", "") !== "",
+        onChange: (value) => setUI("calendarSecond", String(value)),
+      }),
     ),
-    uiValue("calendarAllDay", true)
-      ? null
-      : Row(
-          { gap: 6, fillWidth: true, align: "center" },
-          Select({
-            options: HOURS,
-            value: uiValue("calendarHour", "00"),
-            width: 84,
-            onChange: (value) => setUI("calendarHour", String(value)),
-          }),
-          Text({ text: ":", size: 16, color: textColor(false) }),
-          Select({
-            options: MINUTES,
-            value: uiValue("calendarMinute", "00"),
-            width: 84,
-            onChange: (value) => setUI("calendarMinute", String(value)),
-          }),
-          Text({ text: ":", size: 16, color: textColor(false) }),
-          Select({
-            options: SECONDS,
-            value: uiValue("calendarSecond", "00"),
-            width: 84,
-            onChange: (value) => setUI("calendarSecond", String(value)),
-          }),
-        ),
     Button({ variant: "ghost", onClick: pickCalendarToday }, "Сегодня"),
   )
 }
