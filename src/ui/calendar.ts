@@ -1,14 +1,16 @@
 import {
   Box,
   Button,
+  Checkbox,
   Grid,
   IconButton,
   Row,
+  Select,
   Sheet,
   Text,
   type UiNode,
 } from "pulsar"
-import { uiValue } from "../state.ts"
+import { uiValue, setUI } from "../state.ts"
 import { textColor } from "../theme.ts"
 import {
   closeCalendar,
@@ -33,6 +35,17 @@ const MONTHS = [
   "Ноябрь",
   "Декабрь",
 ]
+
+const unitOptions = (count: number) =>
+  Array.from({ length: count }, (_, index) => {
+    const value = String(index).padStart(2, "0")
+
+    return { value, label: value }
+  })
+
+const HOURS = unitOptions(24)
+const MINUTES = unitOptions(60)
+const SECONDS = unitOptions(60)
 
 const selectedParts = (
   value: string,
@@ -124,6 +137,38 @@ export const CalendarSheet = () => {
       },
       ...cells,
     ),
+    Checkbox(
+      {
+        checked: uiValue("calendarAllDay", true),
+        onToggle: (value) => setUI("calendarAllDay", value),
+      },
+      "Весь день",
+    ),
+    uiValue("calendarAllDay", true)
+      ? null
+      : Row(
+          { gap: 6, fillWidth: true, align: "center" },
+          Select({
+            options: HOURS,
+            value: uiValue("calendarHour", "00"),
+            width: 84,
+            onChange: (value) => setUI("calendarHour", String(value)),
+          }),
+          Text({ text: ":", size: 16, color: textColor(false) }),
+          Select({
+            options: MINUTES,
+            value: uiValue("calendarMinute", "00"),
+            width: 84,
+            onChange: (value) => setUI("calendarMinute", String(value)),
+          }),
+          Text({ text: ":", size: 16, color: textColor(false) }),
+          Select({
+            options: SECONDS,
+            value: uiValue("calendarSecond", "00"),
+            width: 84,
+            onChange: (value) => setUI("calendarSecond", String(value)),
+          }),
+        ),
     Button({ variant: "ghost", onClick: pickCalendarToday }, "Сегодня"),
   )
 }

@@ -221,7 +221,7 @@ export const EditorPage = () => {
         onInput: (value) => updateDraft({ description: value }),
       }),
       Text({
-        text: "Дату выберите в календаре. Время сохраняется.",
+        text: "Дата и время выбираются в календаре.",
         size: 11,
         color: textColor(true),
       }),
