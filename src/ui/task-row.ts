@@ -71,11 +71,12 @@ export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
         onToggle: () => toggleTodo({ ID: todo.ID }),
       }),
       Column(
-        { gap: 4, expand: true },
+        { gap: 4, fillWidth: true, expand: true },
         Text({
           text: todo.text,
           size: 15,
           weight: "semibold",
+          fillWidth: true,
           maxLines: 2,
           elide: "right",
           color: textColor(todo.done),
@@ -85,6 +86,7 @@ export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
               text: todo.description,
               size: 12,
               color: textColor(true),
+              fillWidth: true,
               maxLines: 2,
               elide: "right",
             })
@@ -93,6 +95,7 @@ export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
           text: metaLine(todo),
           size: 11,
           color: textColor(true),
+          fillWidth: true,
           maxLines: 2,
           elide: "right",
         }),
