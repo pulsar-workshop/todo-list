@@ -110,12 +110,21 @@ export const CalendarSheet = () => {
       }),
     ),
     Grid(
-      { columns: 7, gap: 2, fillWidth: true },
+      { columns: 7, gap: 2, fillWidth: true, fillHeight: false, height: 18 },
       ...WEEKDAYS.map((label) =>
         Text({ text: label, size: 11, color: textColor(true), align: "center" }),
       ),
     ),
-    Grid({ columns: 7, gap: 2, fillWidth: true }, ...cells),
+    Grid(
+      {
+        columns: 7,
+        gap: 2,
+        fillWidth: true,
+        fillHeight: false,
+        height: Math.ceil((lead + total) / 7) * 38 - 2,
+      },
+      ...cells,
+    ),
     Button({ variant: "ghost", onClick: pickCalendarToday }, "Сегодня"),
   )
 }
