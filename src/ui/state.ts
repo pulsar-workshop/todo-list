@@ -135,6 +135,13 @@ export const toggleDraftTag = (ID: string): void => {
   updateDraft({ tags })
 }
 
+export const pickCustomTagColor = async (): Promise<void> => {
+  const current = uiValue("tagColor", TAG_PALETTE[3]!)
+  const picked = await dialog.color({ title: "Цвет тега", color: current })
+
+  if (picked) setUI("tagColor", picked)
+}
+
 export const createDraftTag = (): void => {
   const name = uiValue("tagName", "").trim()
   const color = uiValue("tagColor", TAG_PALETTE[3]!)

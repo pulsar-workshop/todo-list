@@ -1,7 +1,6 @@
 import {
   Box,
   Button,
-  Chip,
   Checkbox,
   Column,
   Divider,
@@ -22,7 +21,7 @@ import { exportAttachment } from "../actions.ts"
 import { fileMeta } from "../format.ts"
 import { isImage } from "../model.ts"
 import { fileURL, getDraft, state, uiValue, setUI } from "../state.ts"
-import { backgroundColor, textColor } from "../theme.ts"
+import { backgroundColor, borderColor, textColor } from "../theme.ts"
 import type { Attachment } from "../types.ts"
 import {
   TAG_PALETTE,
@@ -33,6 +32,7 @@ import {
   createDraftTag,
   deleteDraft,
   openAttachment,
+  pickCustomTagColor,
   removeDraftFile,
   removeDraftSubtask,
   saveDraft,
@@ -274,18 +274,28 @@ export const EditorPage = () => {
         Button({ onClick: createDraftTag }, "Добавить"),
       ),
       Wrap(
-        { gap: 4, fillWidth: true },
+        { gap: 8, fillWidth: true },
         ...TAG_PALETTE.map((color) =>
-          Chip(
-            {
-              variant: "solid",
-              color: color as ColorValue,
-              selected: tagColor === color,
-              onClick: () => setUI("tagColor", color),
-            },
-            " ",
-          ),
+          Box({
+            width: 30,
+            height: 30,
+            radius: 15,
+            color: color as ColorValue,
+            borderWidth: tagColor === color ? 2 : 1,
+            borderColor: tagColor === color ? textColor(false) : borderColor(),
+            tooltip: color,
+            onClick: () => setUI("tagColor", color),
+          }),
         ),
+        IconButton({
+          icon: "palette",
+          size: 20,
+          color: TAG_PALETTE.includes(tagColor)
+            ? textColor(true)
+            : (tagColor as ColorValue),
+          tooltip: "Свой цвет",
+          onClick: () => void pickCustomTagColor(),
+        }),
       ),
       Divider(),
       section("ПОДЗАДАЧИ"),
