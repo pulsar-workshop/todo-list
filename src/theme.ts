@@ -55,9 +55,6 @@ export const applyTheme = async (dark = isDarkTheme()): Promise<void> => {
     fontScale: 1,
     density: 1,
   })
-
-  await new Promise((resolve) => setTimeout(resolve, 120))
-  app.store.set("themeEpoch", Date.now())
 }
 
 export const textColor = (muted = false): ColorValue => {

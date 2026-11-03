@@ -10,7 +10,6 @@ import {
 import { formatDateValue, parseTime, isDateOnly } from "../format.ts"
 import { isImage, newID, todoAsText } from "../model.ts"
 import { state, setUI, uiValue, getDraft } from "../state.ts"
-import { applyTheme } from "../theme.ts"
 import { saveSyncConnection } from "../sync.ts"
 import type { Attachment, Subtask, Todo } from "../types.ts"
 
@@ -41,7 +40,6 @@ export const openEditor = (todo: Todo): void => {
   setUI("subtaskText", "")
   setUI("editorError", "")
   setUI("editorOpen", true)
-  void applyTheme()
 }
 
 export const closeEditor = (): void => {
@@ -225,7 +223,6 @@ export const removeDraftFile = (path: string): void => {
 export const openAttachment = (file: Attachment): void => {
   if (isImage(file.name)) {
     setUI("viewerPath", file.path)
-    void applyTheme()
     return
   }
 
@@ -238,7 +235,6 @@ export const openSync = (): void => {
   setUI("syncPasswordInput", state.syncSettings.password)
   setUI("syncError", "")
   setUI("syncOpen", true)
-  void applyTheme()
 }
 
 export const closeSync = (): void => {
