@@ -294,11 +294,16 @@ export const EditorPage = () => {
             width: 30,
             height: 30,
             radius: 15,
-            gradient: {
-              from: "#f43f5e",
-              to: "#0ea5e9",
-              direction: "horizontal",
-            },
+            color: TAG_PALETTE.includes(tagColor)
+              ? "transparent"
+              : (tagColor as ColorValue),
+            gradient: TAG_PALETTE.includes(tagColor)
+              ? {
+                  from: "#f43f5e",
+                  to: "#0ea5e9",
+                  direction: "horizontal",
+                }
+              : undefined,
             borderWidth: TAG_PALETTE.includes(tagColor) ? 1 : 2,
             borderColor: TAG_PALETTE.includes(tagColor)
               ? borderColor()
@@ -306,7 +311,9 @@ export const EditorPage = () => {
             tooltip: "Свой цвет",
             onClick: () => void pickCustomTagColor(),
           }),
-          Icon({ name: "add", size: 16, color: "#ffffff", align: "center" }),
+          TAG_PALETTE.includes(tagColor)
+            ? Icon({ name: "add", size: 16, color: "#ffffff", align: "center" })
+            : null,
         ),
       ),
       Divider(),
