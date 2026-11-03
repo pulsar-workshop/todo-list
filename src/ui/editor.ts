@@ -5,7 +5,6 @@ import {
   Checkbox,
   Column,
   Divider,
-  For,
   Icon,
   IconButton,
   Image,
@@ -290,11 +289,9 @@ export const EditorPage = () => {
       ),
       Divider(),
       section("ПОДЗАДАЧИ"),
-      For({
-        each: draft?.subtasks ?? [],
-        keyOf: (subtask) => subtask.ID,
-        spacing: 6,
-        render: (subtask, index) =>
+      Column(
+        { gap: 6, fillWidth: true },
+        ...(draft?.subtasks ?? []).map((subtask, index) =>
           Row(
             { gap: 6, fillWidth: true, align: "center" },
             Checkbox({
@@ -318,7 +315,8 @@ export const EditorPage = () => {
               onClick: () => removeDraftSubtask(index),
             }),
           ),
-      }),
+        ),
+      ),
       Row(
         { gap: 8, fillWidth: true },
         Input({
@@ -334,12 +332,10 @@ export const EditorPage = () => {
       ),
       Divider(),
       section("ФАЙЛЫ"),
-      For({
-        each: draft?.files ?? [],
-        keyOf: (file) => file.path,
-        spacing: 6,
-        render: attachmentRow,
-      }),
+      Column(
+        { gap: 6, fillWidth: true },
+        ...(draft?.files ?? []).map((file) => attachmentRow(file)),
+      ),
       Button(
         {
           variant: "outline",
