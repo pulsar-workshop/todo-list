@@ -2,7 +2,7 @@ import { openPath } from "./actions.ts"
 import { installMenu } from "./menu.ts"
 import { watchTheme } from "./theme.ts"
 import { app, state } from "./state.ts"
-import { loadSyncSettings, restore } from "./storage.ts"
+import { flushState, loadSyncSettings, restore } from "./storage.ts"
 import { pull, push, syncNow } from "./sync.ts"
 import { renderApp } from "./ui/app.ts"
 import { focusNewTask, handleBack, openSync } from "./ui/state.ts"
@@ -29,6 +29,7 @@ app.on("notification-click", () => {
   void app.window().focus()
   openSync()
 })
+app.on("app-pause", () => void flushState())
 app.on("power-resume", () => {
   if (state.syncSettings.host) void syncNow()
 })

@@ -1,10 +1,10 @@
-import { Box, Button, Column, Image, Page, Row, Spacer, Text } from "pulsar"
-import { fileURL, setUI, uiValue } from "../state.ts"
+import { Box, Button, Column, Image, Page, Row, Spacer, Text, component } from "pulsar"
+import { fileURL, ui } from "../state.ts"
 import { backgroundColor, textColor } from "../theme.ts"
 import { TOUCH_SCROLL } from "./scroll.ts"
 
-export const ViewerPage = () => {
-  const path = uiValue("viewerPath", "")
+export const ViewerPage = component(() => {
+  const path = ui.viewerPath
 
   return Box(
     { key: "viewer", fill: true, color: backgroundColor() },
@@ -19,7 +19,7 @@ export const ViewerPage = () => {
             {
               variant: "ghost",
               icon: "arrow_back",
-              onClick: () => setUI("viewerPath", ""),
+              onClick: () => (ui.viewerPath = ""),
             },
             "Закрыть",
           ),
@@ -44,4 +44,4 @@ export const ViewerPage = () => {
       ),
     ),
   )
-}
+})

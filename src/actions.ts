@@ -8,13 +8,13 @@ import {
   todoAsText,
 } from "./model.ts"
 import { persistState } from "./storage.ts"
-import { deleteRemoteFile, push } from "./sync.ts"
-import { app, refresh, state } from "./state.ts"
-import type { Attachment, Folder, Tag, Todo } from "./types.ts"
+import { deleteRemoteFile, markDirty, push } from "./sync.ts"
+import { app, state, ui } from "./state.ts"
+import type { Attachment, Folder, Tag } from "./types.ts"
 
 const save = (): void => {
-  state.sync.dirty = true
-  void persistState()
+  markDirty()
+  persistState()
   void push()
 }
 
@@ -52,8 +52,6 @@ export const addTodo = (params: {
       files: [],
     },
   ]
-
-  refresh()
   save()
 }
 
@@ -80,8 +78,6 @@ export const saveTask = (params: { json?: unknown; task?: unknown }): void => {
   state.todos = exists
     ? state.todos.map((todo) => (todo.ID === task.ID ? task : todo))
     : [...state.todos, task]
-
-  refresh()
   save()
 }
 
@@ -107,8 +103,6 @@ export const toggleTodo = (params: { ID?: unknown }): void => {
       completedAllDay: false,
     }
   })
-
-  refresh()
   save()
 }
 
@@ -119,8 +113,6 @@ export const deleteTodo = async (params: { ID?: unknown }): Promise<void> => {
 
   state.deletedTodos = { ...state.deletedTodos, [ID]: Date.now() }
   state.todos = state.todos.filter((todo) => todo.ID !== ID)
-
-  refresh()
   save()
 
   try {
@@ -144,8 +136,6 @@ export const addFolder = (params: { name?: unknown }): Folder | null => {
   const folder: Folder = { ID: newID(), name, updatedAT: Date.now() }
 
   state.folders = [...state.folders, folder]
-
-  refresh()
   save()
 
   return folder
@@ -171,8 +161,6 @@ export const renameFolder = (params: {
   state.folders = state.folders.map((item) =>
     item.ID === ID ? { ...item, name, updatedAT: Date.now() } : item,
   )
-
-  refresh()
   save()
 }
 
@@ -199,20 +187,8 @@ export const deleteFolder = async (params: { ID?: unknown }): Promise<void> => {
     return { ...todo, folderID: null, updatedAT: now }
   })
 
-  const draft = app.store.get("draft")
-
-  if (draft && typeof draft === "object") {
-    const record = draft as Todo
-
-    if (record.folderID === ID)
-      app.store.set("draft", { ...record, folderID: null })
-  }
-
-  const filter = app.store.get("folderFilter")
-
-  if (filter === ID) app.store.set("folderFilter", "")
-
-  refresh()
+  if (ui.draft?.folderID === ID) ui.draft = { ...ui.draft, folderID: null }
+  if (ui.folderFilter === ID) ui.folderFilter = ""
   save()
 }
 
@@ -234,8 +210,6 @@ export const addTag = (params: {
   const tag: Tag = { ID: newID(), name, color, updatedAT: Date.now() }
 
   state.tags = [...state.tags, tag]
-
-  refresh()
   save()
 
   return tag
@@ -268,20 +242,7 @@ export const deleteTag = async (params: { ID?: unknown }): Promise<void> => {
     }
   })
 
-  const draft = app.store.get("draft")
-
-  if (draft && typeof draft === "object") {
-    const record = draft as Todo
-
-    if (Array.isArray(record.tags)) {
-      app.store.set("draft", {
-        ...record,
-        tags: record.tags.filter((tagID) => tagID !== ID),
-      })
-    }
-  }
-
-  refresh()
+  if (ui.draft) ui.draft = { ...ui.draft, tags: ui.draft.tags.filter((tagID) => tagID !== ID) }
   save()
 }
 
@@ -351,8 +312,6 @@ export const pickFiles = async (params: {
       ? { ...todo, updatedAT: Date.now(), files: [...todo.files, ...added] }
       : todo,
   )
-
-  refresh()
   save()
 
   return added
@@ -377,8 +336,6 @@ export const removeFile = (params: { ID?: unknown; path?: unknown }): void => {
       files: todo.files.filter((item) => item.path !== path),
     }
   })
-
-  refresh()
   save()
 
   void fs.remove(path).catch(() => false)

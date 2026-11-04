@@ -1,11 +1,10 @@
-import { App, createBreakpoints, createState, type ColorValue } from "pulsar"
+import { App, computed, createBreakpoints, createState, type ColorValue } from "pulsar"
 import { DEFAULT_PORT } from "./model.ts"
 import type { Folder, SyncSettings, Tag, Todo } from "./types.ts"
 
 export const app = new App()
 
 export const breakpoints = createBreakpoints(app)
-
 
 export const state = createState({
   sync: { dirty: false },
@@ -18,37 +17,76 @@ export const state = createState({
   deletedTags: {} as Record<string, number>,
 })
 
-export const refresh = (): void => {
-  app.store.set("todos", state.todos)
-  app.store.set("tags", state.tags)
-  app.store.set("folders", state.folders)
-  app.store.set("activeCount", state.todos.filter((todo) => !todo.done).length)
-}
+export type DateField = "draftStart" | "draftEnd" | "draftCreated" | "draftCompleted"
 
-export const uiValue = <T>(key: string, fallback: T): T => {
-  const value = app.store.get(key)
+export const ui = createState({
+  draft: null as Todo | null,
+  draftStart: "",
+  draftEnd: "",
+  draftCreated: "",
+  draftCompleted: "",
+  draftDateMode: "allDay" as "allDay" | "range",
+  editorOpen: false,
+  editorError: "",
+  syncOpen: false,
+  viewerPath: "",
+  todoQuery: "",
+  filterTags: [] as string[],
+  folderFilter: "",
+  tagFilterOpen: false,
+  foldersOpen: false,
+  folderName: "",
+  folderRenameID: "",
+  folderRenameText: "",
+  newTaskFocus: false,
+  tagSheetOpen: false,
+  tagName: "",
+  tagColor: "#3b82f6",
+  subtaskText: "",
+  calendarOpen: false,
+  calendarTarget: "" as DateField | "",
+  calendarYear: 0,
+  calendarMonth: 0,
+  calendarWithTime: true,
+  calendarHour: "",
+  calendarMinute: "",
+  calendarSecond: "",
+  themeDark: true,
+  syncStatus: "off",
+})
 
-  return value === null || value === undefined ? fallback : (value as T)
-}
+export const activeCount = computed(() => {
+  return state.todos.filter((todo) => !todo.done).length
+})
 
-export const setUI = (key: string, value: unknown): void => {
-  app.store.set(key, value)
-}
+export const sortedTodos = computed(() => {
+  return [...state.todos].sort((a, b) => b.createdAT - a.createdAT)
+})
 
-export const getDraft = (): Todo | null => {
-  return uiValue<Todo | null>("draft", null)
-}
+export const activeFolder = computed(() => {
+  const stored = ui.folderFilter
+
+  if (stored === "none") return stored
+
+  return state.folders.some((folder) => folder.ID === stored) ? stored : ""
+})
+
+export const activeTags = computed(() => {
+  return ui.filterTags.filter((ID) => state.tags.some((tag) => tag.ID === ID))
+})
 
 export const tagByID = (ID: string): Tag | null => {
   return state.tags.find((tag) => tag.ID === ID) ?? null
 }
 
 export const fileURL = (path: string): string => {
-  return path.startsWith("file:") ? path : `file://${path}`
+  if (path.startsWith("file:")) return path
+
+  return `file://${encodeURI(path).replace(/[?#]/g, encodeURIComponent)}`
 }
 
 export const syncLabel = (): string => {
-  const status = app.store.get("syncStatus") ?? "off"
+  const status = ui.syncStatus
 
   if (status === "ok") return "Синхронизировано"
   if (status === "error") return "Сервер недоступен"
@@ -58,7 +96,7 @@ export const syncLabel = (): string => {
 }
 
 export const syncColor = (): ColorValue => {
-  const status = app.store.get("syncStatus") ?? "off"
+  const status = ui.syncStatus
 
   if (status === "ok") return "#22c55e"
   if (status === "error") return "#ef4444"

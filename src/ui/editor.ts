@@ -16,18 +16,12 @@ import {
   Text,
   TextArea,
   Wrap,
+  component,
 } from "pulsar"
 import { exportAttachment } from "../actions.ts"
 import { fileMeta, formatDateValue } from "../format.ts"
 import { isImage } from "../model.ts"
-import {
-  breakpoints,
-  fileURL,
-  getDraft,
-  state,
-  uiValue,
-  setUI,
-} from "../state.ts"
+import { breakpoints, fileURL, state, ui, type DateField } from "../state.ts"
 import { backgroundColor, textColor } from "../theme.ts"
 import type { Attachment, Subtask } from "../types.ts"
 import {
@@ -109,7 +103,7 @@ const subtaskMeta = (subtask: Subtask): string => {
 
 const attachmentRow = (file: Attachment) =>
   Row(
-    { gap: 8, fillWidth: true, align: "center" },
+    { key: file.path, gap: 8, fillWidth: true, align: "center" },
     attachmentIcon(file),
     Column(
       { gap: 2, expand: true, fillWidth: true },
@@ -187,11 +181,11 @@ const footer = () =>
     }),
   )
 
-const dateInput = (key: string, withTime = true) =>
+const dateInput = (key: DateField, withTime = true) =>
   Row(
     { gap: 4, fillWidth: true, align: "center" },
     Input({
-      value: uiValue(key, ""),
+      value: ui[key],
       variant: "outline",
       textColor: textColor(false),
       readOnly: true,
@@ -205,19 +199,76 @@ const dateInput = (key: string, withTime = true) =>
     }),
   )
 
-const dateField = (label: string, key: string, withTime = true) =>
+const dateField = (label: string, key: DateField, withTime = true) =>
   Column(
     { gap: 4, expand: true },
     Text({ text: label, size: 11, color: textColor(true) }),
     dateInput(key, withTime),
   )
 
-export const EditorPage = () => {
+const Subtasks = component<{ subtasks: Subtask[] }>(({ subtasks }) => {
+  return Column(
+    { gap: 6, fillWidth: true },
+    ...subtasks.map((subtask, index) =>
+      Row(
+        { key: subtask.ID, gap: 6, fillWidth: true, align: "center" },
+        Button({
+          variant: "ghost",
+          icon: subtask.done ? "check_box" : "check_box_outline_blank",
+          size: "sm",
+          tooltip: subtask.done ? "Снять отметку" : "Готово",
+          onClick: () => {
+            const done = !subtask.done
+
+            updateDraftSubtask(index, {
+              done,
+              completedAT: done ? Date.now() : null,
+            })
+          },
+        }),
+        Column(
+          { gap: 2, expand: true },
+          Input({
+            value: subtask.text,
+            variant: "outline",
+            textColor: subtask.done ? textColor(true) : textColor(false),
+            strike: subtask.done,
+            fillWidth: true,
+            onInput: (value) => updateDraftSubtask(index, { text: value }),
+          }),
+          Text({
+            text: subtaskMeta(subtask),
+            size: 11,
+            color: textColor(true),
+            fillWidth: true,
+            wrap: true,
+            maxLines: 2,
+            elide: "right",
+          }),
+        ),
+        IconButton({
+          icon: "close",
+          tooltip: "Удалить",
+          onClick: () => removeDraftSubtask(index),
+        }),
+      ),
+    ),
+  )
+})
+
+const Files = component<{ files: Attachment[] }>(({ files }) => {
+  return Column(
+    { gap: 6, fillWidth: true },
+    ...files.map((file) => attachmentRow(file)),
+  )
+})
+
+export const EditorPage = component(() => {
   const compact = breakpoints.is("compact")
-  const draft = getDraft()
-  const editorError = uiValue("editorError", "")
+  const draft = ui.draft
+  const editorError = ui.editorError
   const currentTags = draft?.tags ?? []
-  const dateMode = uiValue<"allDay" | "range">("draftDateMode", "allDay")
+  const dateMode = ui.draftDateMode
   const isAllDay = dateMode === "allDay"
   const rangeFields = compact
     ? Column(
@@ -318,7 +369,7 @@ export const EditorPage = () => {
               const tag = state.tags.find((item) => item.ID === ID)
 
               return tag
-                ? TagChip({ tag, selected: true, onClick: openTagSheet })
+                ? TagChip({ key: tag.ID, tag, selected: true, onClick: openTagSheet })
                 : null
             }),
           )
@@ -329,72 +380,23 @@ export const EditorPage = () => {
       ),
       Divider(),
       section("ПОДЗАДАЧИ"),
-      Column(
-        { gap: 6, fillWidth: true },
-        ...(draft?.subtasks ?? []).map((subtask, index) =>
-          Row(
-            { gap: 6, fillWidth: true, align: "center" },
-            Button({
-              variant: "ghost",
-              icon: subtask.done ? "check_box" : "check_box_outline_blank",
-              size: "sm",
-              tooltip: subtask.done ? "Снять отметку" : "Готово",
-              onClick: () => {
-                const done = !subtask.done
-
-                updateDraftSubtask(index, {
-                  done,
-                  completedAT: done ? Date.now() : null,
-                })
-              },
-            }),
-            Column(
-              { gap: 2, expand: true },
-              Input({
-                value: subtask.text,
-                variant: "outline",
-                textColor: subtask.done ? textColor(true) : textColor(false),
-                strike: subtask.done,
-                fillWidth: true,
-                onInput: (value) => updateDraftSubtask(index, { text: value }),
-              }),
-              Text({
-                text: subtaskMeta(subtask),
-                size: 11,
-                color: textColor(true),
-                fillWidth: true,
-                wrap: true,
-                maxLines: 2,
-                elide: "right",
-              }),
-            ),
-            IconButton({
-              icon: "close",
-              tooltip: "Удалить",
-              onClick: () => removeDraftSubtask(index),
-            }),
-          ),
-        ),
-      ),
+      Subtasks({ subtasks: draft?.subtasks ?? [] }),
       Row(
         { gap: 8, fillWidth: true },
         Input({
-          value: uiValue("subtaskText", ""),
+          value: ui.subtaskText,
           variant: "outline",
           textColor: textColor(false),
           placeholder: "Новая подзадача",
           expand: true,
-          onInput: (value) => setUI("subtaskText", value),
+          onInput: (value) => (ui.subtaskText = value),
           onSubmitted: addDraftSubtask,
         }),
         Button({ onClick: addDraftSubtask }, "Добавить"),
       ),
       Divider(),
       section("ФАЙЛЫ"),
-      Column(
-        { gap: 6, fillWidth: true },
-        ...(draft?.files ?? []).map((file) => attachmentRow(file)),
-      ),
+      Files({ files: draft?.files ?? [] }),
       Button(
         {
           variant: "outline",
@@ -404,8 +406,8 @@ export const EditorPage = () => {
         },
         "Прикрепить файл",
       ),
-      uiValue("calendarOpen", false) ? CalendarSheet() : null,
-      uiValue("tagSheetOpen", false) ? TagSheet() : null,
+      ui.calendarOpen ? CalendarSheet({}) : null,
+      ui.tagSheetOpen ? TagSheet({}) : null,
     ),
   )
-}
+})

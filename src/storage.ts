@@ -1,4 +1,4 @@
-import { storage } from "pulsar"
+import { secureStorage, storage } from "pulsar"
 import {
   DEFAULT_PORT,
   normalizeAttachments,
@@ -7,18 +7,35 @@ import {
   parseTag,
   parseTodo,
 } from "./model.ts"
-import { refresh, state } from "./state.ts"
+import { state } from "./state.ts"
 import { setStatus } from "./sync-status.ts"
 import type { Folder, SyncSettings, Tag, Todo } from "./types.ts"
 
-export const persistState = async (): Promise<void> => {
-  await storage.set("todos", state.todos)
-  await storage.set("tags", state.tags)
-  await storage.set("folders", state.folders)
-  await storage.set("deletedTodos", state.deletedTodos)
-  await storage.set("deletedTags", state.deletedTags)
-  await storage.set("deletedFolders", state.deletedFolders)
-  await storage.set("syncDirty", state.sync.dirty)
+const PERSIST_DELAY_MS = 200
+const SECRET_KEY = "syncPassword"
+
+let persistTimer: ReturnType<typeof setTimeout> | null = null
+
+export const flushState = async (): Promise<void> => {
+  if (persistTimer !== null) clearTimeout(persistTimer)
+
+  persistTimer = null
+
+  await storage.setMany({
+    todos: state.todos,
+    tags: state.tags,
+    folders: state.folders,
+    deletedTodos: state.deletedTodos,
+    deletedTags: state.deletedTags,
+    deletedFolders: state.deletedFolders,
+    syncDirty: state.sync.dirty,
+  })
+}
+
+export const persistState = (): void => {
+  if (persistTimer !== null) return
+
+  persistTimer = setTimeout(() => void flushState(), PERSIST_DELAY_MS)
 }
 
 export const restore = async (): Promise<void> => {
@@ -51,7 +68,35 @@ export const restore = async (): Promise<void> => {
     .filter((folder) => !state.deletedFolders[folder.ID])
 
   normalizeAttachments(state.todos)
-  refresh()
+}
+
+const secureAvailable = async (): Promise<boolean> => {
+  try {
+    return (await secureStorage.available()) === true
+  } catch {
+    return false
+  }
+}
+
+const savePassword = async (password: string): Promise<boolean> => {
+  if (!(await secureAvailable())) return false
+
+  if (!password) {
+    await secureStorage.remove(SECRET_KEY)
+
+    return true
+  }
+
+  return (await secureStorage.set(SECRET_KEY, password)) === true
+}
+
+const saveConnection = async (settings: SyncSettings): Promise<void> => {
+  const secured = await savePassword(settings.password)
+
+  await storage.set(
+    "sync",
+    secured ? { host: settings.host, port: settings.port } : settings,
+  )
 }
 
 export const loadSyncSettings = async (): Promise<void> => {
@@ -61,9 +106,13 @@ export const loadSyncSettings = async (): Promise<void> => {
     const record = saved as Record<string, unknown>
     const host = typeof record.host === "string" ? record.host : ""
     const port = typeof record.port === "string" ? record.port : DEFAULT_PORT
-    const password = typeof record.password === "string" ? record.password : ""
+    const stored = typeof record.password === "string" ? record.password : ""
+    const secret = (await secureAvailable()) ? await secureStorage.get(SECRET_KEY) : null
+    const password = secret ?? stored
 
     state.syncSettings = { host, port, password }
+
+    if (stored) await saveConnection(state.syncSettings)
   }
 
   setStatus(state.syncSettings.host ? "idle" : "off")
@@ -73,5 +122,6 @@ export const writeSyncSettings = async (
   settings: SyncSettings,
 ): Promise<void> => {
   state.syncSettings = settings
-  await storage.set("sync", settings)
+
+  await saveConnection(settings)
 }

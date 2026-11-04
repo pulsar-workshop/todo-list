@@ -1,5 +1,5 @@
-import { Button, Chip, Sheet, Text, Wrap, type ColorValue } from "pulsar"
-import { state, uiValue } from "../state.ts"
+import { Button, Chip, Sheet, Text, Wrap, component, type ColorValue } from "pulsar"
+import { activeTags, state, ui } from "../state.ts"
 import { textColor } from "../theme.ts"
 import {
   clearTagFilters,
@@ -7,13 +7,13 @@ import {
   toggleFilterTag,
 } from "./state.ts"
 
-export const TagFilterSheet = (open: boolean) => {
-  const filterIDs = uiValue<string[]>("filterTags", [])
+export const TagFilterSheet = component(() => {
+  const filterIDs = activeTags.get()
   const tags = state.tags
 
   return Sheet(
     {
-      open,
+      open: ui.tagFilterOpen,
       title: "Фильтр по тегам",
       onClose: closeTagFilter,
     },
@@ -23,6 +23,7 @@ export const TagFilterSheet = (open: boolean) => {
           ...tags.map((tag) =>
             Chip(
               {
+                key: tag.ID,
                 variant: "outline",
                 color: tag.color as ColorValue,
                 selected: filterIDs.includes(tag.ID),
@@ -41,4 +42,4 @@ export const TagFilterSheet = (open: boolean) => {
     Button({ variant: "ghost", onClick: clearTagFilters }, "Сбросить теги"),
     Button({ variant: "ghost", onClick: closeTagFilter }, "Готово"),
   )
-}
+})

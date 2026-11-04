@@ -8,9 +8,10 @@ import {
   Row,
   Sheet,
   Text,
+  component,
   type UiNode,
 } from "pulsar"
-import { uiValue, setUI } from "../state.ts"
+import { ui } from "../state.ts"
 import { textColor } from "../theme.ts"
 import {
   closeCalendar,
@@ -37,16 +38,21 @@ const MONTHS = [
   "Декабрь",
 ]
 
-const timeInput = (key: string, placeholder: string) =>
+const timeInput = (
+  key: "calendarHour" | "calendarMinute" | "calendarSecond",
+  placeholder: string,
+) =>
   Input({
-    value: uiValue(key, ""),
+    value: ui[key],
     placeholder,
     variant: "outline",
     textColor: textColor(false),
     keyboardType: "number",
     maxLength: 2,
     width: 56,
-    onInput: (value) => setUI(key, value.replace(/\D/g, "").slice(0, 2)),
+    onInput: (value) => {
+      ui[key] = value.replace(/\D/g, "").slice(0, 2)
+    },
   })
 
 const selectedParts = (
@@ -63,13 +69,13 @@ const selectedParts = (
   }
 }
 
-export const CalendarSheet = () => {
-  const year = uiValue("calendarYear", new Date().getFullYear())
-  const month = uiValue("calendarMonth", new Date().getMonth())
-  const target = uiValue("calendarTarget", "")
-  const value = target ? uiValue<string>(target, "") : ""
+export const CalendarSheet = component(() => {
+  const year = ui.calendarYear
+  const month = ui.calendarMonth
+  const target = ui.calendarTarget
+  const value = target ? ui[target] : ""
   const selected = selectedParts(value)
-  const withTime = uiValue("calendarWithTime", true)
+  const withTime = ui.calendarWithTime
 
   const lead = (new Date(year, month, 1).getDay() + 6) % 7
   const total = new Date(year, month + 1, 0).getDate()
@@ -175,4 +181,4 @@ export const CalendarSheet = () => {
       : null,
     Button({ variant: "ghost", onClick: pickCalendarToday }, "Сегодня"),
   )
-}
+})

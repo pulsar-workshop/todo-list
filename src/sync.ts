@@ -1,4 +1,4 @@
-import { fs, net, paths } from "pulsar"
+import { NetError, fs, net, paths } from "pulsar"
 import {
   attachmentKey,
   baseName,
@@ -12,7 +12,7 @@ import {
   thumbPath,
 } from "./model.ts"
 import { persistState, writeSyncSettings } from "./storage.ts"
-import { refresh, state } from "./state.ts"
+import { state } from "./state.ts"
 import { setStatus } from "./sync-status.ts"
 import type {
   Attachment,
@@ -23,7 +23,21 @@ import type {
   Todo,
 } from "./types.ts"
 
+let revision = 0
+let pushing: Promise<void> | null = null
+let pushQueued = false
+let pulling = false
+
+const failedDownloads = new Set<string>()
+
+export const markDirty = (): void => {
+  state.sync.dirty = true
+  revision++
+}
+
 const syncBase = (): string => {
+  if (!state.syncSettings.host) return ""
+
   return `http://${state.syncSettings.host}:${state.syncSettings.port}`
 }
 
@@ -78,6 +92,10 @@ const parseState = (text: string): RemoteState | null => {
   }
 }
 
+const publishFileChanges = (): void => {
+  state.todos = state.todos.map((todo) => ({ ...todo }))
+}
+
 const applyRemote = (remote: RemoteState): boolean => {
   let changed = false
 
@@ -104,6 +122,8 @@ const applyRemote = (remote: RemoteState): boolean => {
 
   const localTodos = new Map(state.todos.map((todo) => [todo.ID, todo]))
 
+  let todosChanged = false
+
   for (const todo of remote.todos) {
     const tombstoneAt = state.deletedTodos[todo.ID]
 
@@ -120,7 +140,7 @@ const applyRemote = (remote: RemoteState): boolean => {
 
     if (!local || todo.updatedAT > local.updatedAT) {
       localTodos.set(todo.ID, todo)
-      changed = true
+      todosChanged = true
     }
   }
 
@@ -128,11 +148,14 @@ const applyRemote = (remote: RemoteState): boolean => {
     (todo) => !state.deletedTodos[todo.ID],
   )
 
-  if (nextTodos.length !== state.todos.length) changed = true
-
-  state.todos = nextTodos
+  if (todosChanged || nextTodos.length !== state.todos.length) {
+    state.todos = nextTodos
+    changed = true
+  }
 
   const localTags = new Map(state.tags.map((tag) => [tag.ID, tag]))
+
+  let tagsChanged = false
 
   for (const tag of remote.tags) {
     const tombstoneAt = state.deletedTags[tag.ID]
@@ -150,7 +173,7 @@ const applyRemote = (remote: RemoteState): boolean => {
 
     if (!local || tag.updatedAT > local.updatedAT) {
       localTags.set(tag.ID, tag)
-      changed = true
+      tagsChanged = true
     }
   }
 
@@ -158,11 +181,14 @@ const applyRemote = (remote: RemoteState): boolean => {
     (tag) => !state.deletedTags[tag.ID],
   )
 
-  if (nextTags.length !== state.tags.length) changed = true
-
-  state.tags = nextTags
+  if (tagsChanged || nextTags.length !== state.tags.length) {
+    state.tags = nextTags
+    changed = true
+  }
 
   const localFolders = new Map(state.folders.map((folder) => [folder.ID, folder]))
+
+  let foldersChanged = false
 
   for (const folder of remote.folders) {
     const tombstoneAt = state.deletedFolders[folder.ID]
@@ -180,7 +206,7 @@ const applyRemote = (remote: RemoteState): boolean => {
 
     if (!local || folder.updatedAT > local.updatedAT) {
       localFolders.set(folder.ID, folder)
-      changed = true
+      foldersChanged = true
     }
   }
 
@@ -188,9 +214,10 @@ const applyRemote = (remote: RemoteState): boolean => {
     (folder) => !state.deletedFolders[folder.ID],
   )
 
-  if (nextFolders.length !== state.folders.length) changed = true
-
-  state.folders = nextFolders
+  if (foldersChanged || nextFolders.length !== state.folders.length) {
+    state.folders = nextFolders
+    changed = true
+  }
 
   const folderIDs = new Set(state.folders.map((folder) => folder.ID))
 
@@ -203,7 +230,10 @@ const applyRemote = (remote: RemoteState): boolean => {
     changed = true
   }
 
-  if (normalizeAttachments(state.todos)) changed = true
+  if (normalizeAttachments(state.todos)) {
+    publishFileChanges()
+    changed = true
+  }
 
   return changed
 }
@@ -316,7 +346,11 @@ const downloadFiles = async (
         changed = true
       }
 
-      if (known.has(key) && !(await fs.exists(file.path).catch(() => true))) {
+      if (
+        known.has(key) &&
+        !failedDownloads.has(key) &&
+        !(await fs.exists(file.path).catch(() => true))
+      ) {
         try {
           const destination = `${root}/${todo.ID}/${baseName(file.path)}`
           const url = `${base}/file?key=${encodeURIComponent(key)}`
@@ -343,7 +377,10 @@ const downloadFiles = async (
               changed = true
             }
           }
-        } catch {}
+        } catch (error) {
+          if (error instanceof NetError && error.code === "ERR_TOO_LARGE")
+            failedDownloads.add(key)
+        }
       }
 
       if (known.has(key) && (await ensureThumb(base, root, todo, file)))
@@ -368,13 +405,8 @@ export const deleteRemoteFile = async (key: string): Promise<void> => {
   } catch {}
 }
 
-export const push = async (): Promise<void> => {
-  const base = syncBase()
-
-  if (!base) {
-    setStatus("off")
-    return
-  }
+const pushOnce = async (base: string): Promise<boolean> => {
+  const started = revision
 
   state.sync.dirty = true
 
@@ -398,25 +430,60 @@ export const push = async (): Promise<void> => {
 
     const remote = parseState(response.text)
 
-    let changed = remote ? applyRemote(remote) : false
+    if (remote) applyRemote(remote)
 
-    if (await uploadFiles(base, remote?.files ?? [])) changed = true
+    if (await uploadFiles(base, remote?.files ?? [])) publishFileChanges()
 
-    state.sync.dirty = false
-    void persistState()
-
-    if (changed) refresh()
-
+    state.sync.dirty = revision !== started
+    persistState()
     setStatus("ok")
+
+    return true
   } catch {
     setStatus("error")
+
+    return false
   }
+}
+
+const runPushes = async (): Promise<void> => {
+  let succeeded = true
+
+  do {
+    pushQueued = false
+
+    const base = syncBase()
+
+    if (!base) {
+      setStatus("off")
+
+      return
+    }
+
+    succeeded = await pushOnce(base)
+  } while (pushQueued && succeeded)
+}
+
+export const push = (): Promise<void> => {
+  if (pushing) {
+    pushQueued = true
+
+    return pushing
+  }
+
+  pushing = runPushes().finally(() => {
+    pushing = null
+  })
+
+  return pushing
 }
 
 export const pull = async (): Promise<void> => {
   const base = syncBase()
 
-  if (!base || state.sync.dirty) return
+  if (!base || state.sync.dirty || pushing || pulling) return
+
+  pulling = true
 
   try {
     const response = await net.fetch(`${base}/state`, {
@@ -433,16 +500,15 @@ export const pull = async (): Promise<void> => {
 
     if (!remote) return
 
-    let changed = applyRemote(remote)
+    const applied = applyRemote(remote)
+    const downloaded = await downloadFiles(base, remote.files)
 
-    if (await downloadFiles(base, remote.files)) changed = true
-
-    if (changed) {
-      refresh()
-      void persistState()
-    }
+    if (downloaded) publishFileChanges()
+    if (applied || downloaded) persistState()
   } catch {
     setStatus("error")
+  } finally {
+    pulling = false
   }
 }
 
@@ -466,7 +532,7 @@ export const saveSyncConnection = async (params: {
 
   await writeSyncSettings(settings)
 
-  state.sync.dirty = false
+  failedDownloads.clear()
   setStatus(host ? "idle" : "off")
 
   if (host) await push()

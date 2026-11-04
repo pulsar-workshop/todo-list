@@ -2,11 +2,12 @@ import {
   catppuccinTheme,
   direction,
   setLocale,
+  storage,
   system,
   theme,
   type ColorValue,
 } from "pulsar"
-import { app, uiValue } from "./state.ts"
+import { app, ui } from "./state.ts"
 
 const lightPalette = {
   background: "#f5f6fa",
@@ -37,7 +38,7 @@ const darkPalette = {
 }
 
 export const isDarkTheme = (): boolean => {
-  return uiValue("themeDark", true)
+  return ui.themeDark
 }
 
 export const applyTheme = async (dark = isDarkTheme()): Promise<void> => {
@@ -96,12 +97,15 @@ export const hoverSurfaceColor = (): ColorValue => {
 export const toggleTheme = (): void => {
   const dark = !isDarkTheme()
 
-  app.store.set("themeDark", dark)
+  ui.themeDark = dark
+  void storage.set("themeDark", dark)
   void applyTheme(dark)
 }
 
 export const watchTheme = async (): Promise<void> => {
-  await applyTheme(true)
+  ui.themeDark = (await storage.get("themeDark")) !== false
+
+  await applyTheme()
 
   app.on("theme-changed", () => void applyTheme())
 }

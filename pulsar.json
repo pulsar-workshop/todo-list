@@ -15,6 +15,7 @@
   ],
   "permissions": [
     "storage",
+    "secure",
     "fs",
     "paths",
     "dialog",

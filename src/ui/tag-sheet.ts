@@ -10,9 +10,11 @@ import {
   Stack,
   Text,
   Wrap,
+  component,
   type ColorValue,
 } from "pulsar"
-import { getDraft, setUI, state, uiValue } from "../state.ts"
+import { isAndroid } from "../platform.ts"
+import { state, ui } from "../state.ts"
 import { borderColor, textColor } from "../theme.ts"
 import {
   TAG_PALETTE,
@@ -23,10 +25,10 @@ import {
 } from "./state.ts"
 import { TagChip } from "./tag-chip.ts"
 
-export const TagSheet = () => {
-  const draft = getDraft()
+export const TagSheet = component(() => {
+  const draft = ui.draft
   const current = draft?.tags ?? []
-  const tagColor = uiValue("tagColor", TAG_PALETTE[3]!)
+  const tagColor = ui.tagColor
   const tags = state.tags
   const starter = !TAG_PALETTE.includes(tagColor)
 
@@ -41,6 +43,7 @@ export const TagSheet = () => {
           { gap: 6, fillWidth: true },
           ...tags.map((tag) =>
             TagChip({
+              key: tag.ID,
               tag,
               selected: current.includes(tag.ID),
               onClick: () => toggleDraftTag(tag.ID),
@@ -56,12 +59,12 @@ export const TagSheet = () => {
     Row(
       { gap: 8, fillWidth: true, align: "center" },
       Input({
-        value: uiValue("tagName", ""),
+        value: ui.tagName,
         placeholder: "Новый тег",
         variant: "outline",
         textColor: textColor(false),
         expand: true,
-        onInput: (value) => setUI("tagName", value),
+        onInput: (value) => (ui.tagName = value),
         onSubmitted: createDraftTag,
       }),
       Button({ onClick: createDraftTag }, "Добавить"),
@@ -77,10 +80,12 @@ export const TagSheet = () => {
           borderWidth: tagColor === color ? 2 : 1,
           borderColor: tagColor === color ? textColor(false) : borderColor(),
           tooltip: color,
-          onClick: () => setUI("tagColor", color),
+          onClick: () => (ui.tagColor = color),
         }),
       ),
-      Stack(
+      isAndroid()
+        ? null
+        : Stack(
         { width: 30, height: 30 },
         Box({
           width: 30,
@@ -106,4 +111,4 @@ export const TagSheet = () => {
     ),
     Button({ variant: "ghost", onClick: closeTagSheet }, "Готово"),
   )
-}
+})

@@ -11,8 +11,8 @@ import {
 } from "../actions.ts"
 import { formatDateValue, parseTime, isDateOnly } from "../format.ts"
 import { isImage, newID, todoAsText } from "../model.ts"
-import { state, setUI, uiValue, getDraft } from "../state.ts"
-import { saveSyncConnection } from "../sync.ts"
+import { activeTags, app, state, ui, type DateField } from "../state.ts"
+import { flushState } from "../storage.ts"
 import type { Attachment, Folder, Subtask, Todo } from "../types.ts"
 
 export const TAG_PALETTE = [
@@ -29,14 +29,11 @@ export const TAG_PALETTE = [
 export const openEditor = (todo: Todo): void => {
   const draft = JSON.parse(JSON.stringify(todo)) as Todo
 
-  setUI("draft", draft)
-  setUI("draftStart", formatDateValue(draft.startAT, draft.startAllDay))
-  setUI("draftEnd", formatDateValue(draft.endAT, draft.endAllDay))
-  setUI("draftCreated", formatDateValue(draft.createdAT, draft.createdAllDay))
-  setUI(
-    "draftCompleted",
-    formatDateValue(draft.completedAT, draft.completedAllDay),
-  )
+  ui.draft = draft
+  ui.draftStart = formatDateValue(draft.startAT, draft.startAllDay)
+  ui.draftEnd = formatDateValue(draft.endAT, draft.endAllDay)
+  ui.draftCreated = formatDateValue(draft.createdAT, draft.createdAllDay)
+  ui.draftCompleted = formatDateValue(draft.completedAT, draft.completedAllDay)
 
   const timed =
     (draft.startAT !== null && !draft.startAllDay) ||
@@ -44,23 +41,23 @@ export const openEditor = (todo: Todo): void => {
   const hasRange = draft.startAT !== null && draft.endAT !== null
   const mode = timed || hasRange ? "range" : "allDay"
 
-  setUI("draftDateMode", mode)
+  ui.draftDateMode = mode
 
   if (mode === "allDay" && draft.startAT !== null && draft.endAT === null)
-    setUI("draftEnd", formatDateValue(draft.startAT, draft.startAllDay))
+    ui.draftEnd = formatDateValue(draft.startAT, draft.startAllDay)
 
-  setUI("tagName", "")
-  setUI("tagColor", TAG_PALETTE[3]!)
-  setUI("subtaskText", "")
-  setUI("editorError", "")
-  setUI("editorOpen", true)
+  ui.tagName = ""
+  ui.tagColor = TAG_PALETTE[3]!
+  ui.subtaskText = ""
+  ui.editorError = ""
+  ui.editorOpen = true
 }
 
 export const closeEditor = (): void => {
-  setUI("viewerPath", "")
-  setUI("editorOpen", false)
-  setUI("draft", null)
-  setUI("editorError", "")
+  ui.viewerPath = ""
+  ui.editorOpen = false
+  ui.draft = null
+  ui.editorError = ""
 }
 
 const dateParts = (value: string): { day: number; month: number; year: number } | null => {
@@ -76,41 +73,41 @@ const dateParts = (value: string): { day: number; month: number; year: number } 
 }
 
 export const createFolder = (): void => {
-  const name = uiValue("folderName", "").trim()
+  const name = ui.folderName.trim()
 
   if (!name) return
 
   const folder = addFolder({ name })
 
-  setUI("folderName", "")
+  ui.folderName = ""
 
-  if (folder) setUI("folderFilter", folder.ID)
+  if (folder) ui.folderFilter = folder.ID
 }
 
 export const openFolders = (): void => {
-  setUI("folderName", "")
-  setUI("folderRenameID", "")
-  setUI("foldersOpen", true)
+  ui.folderName = ""
+  ui.folderRenameID = ""
+  ui.foldersOpen = true
 }
 
 export const closeFolders = (): void => {
-  setUI("foldersOpen", false)
-  setUI("folderRenameID", "")
+  ui.foldersOpen = false
+  ui.folderRenameID = ""
 }
 
 export const startRenameFolder = (folder: Folder): void => {
-  setUI("folderRenameID", folder.ID)
-  setUI("folderRenameText", folder.name)
+  ui.folderRenameID = folder.ID
+  ui.folderRenameText = folder.name
 }
 
 export const cancelRenameFolder = (): void => {
-  setUI("folderRenameID", "")
-  setUI("folderRenameText", "")
+  ui.folderRenameID = ""
+  ui.folderRenameText = ""
 }
 
 export const confirmRenameFolder = (): void => {
-  const ID = uiValue("folderRenameID", "")
-  const name = uiValue("folderRenameText", "").trim()
+  const ID = ui.folderRenameID
+  const name = ui.folderRenameText.trim()
 
   if (!ID || !name) return
 
@@ -119,147 +116,133 @@ export const confirmRenameFolder = (): void => {
 }
 
 export const openTagFilter = (): void => {
-  setUI("tagFilterOpen", true)
+  ui.tagFilterOpen = true
 }
 
 export const closeTagFilter = (): void => {
-  setUI("tagFilterOpen", false)
+  ui.tagFilterOpen = false
 }
 
 export const clearTagFilters = (): void => {
-  setUI("filterTags", [])
+  ui.filterTags = []
 }
 
 export const openTagSheet = (): void => {
-  setUI("tagSheetOpen", true)
+  ui.tagSheetOpen = true
 }
 
 export const closeTagSheet = (): void => {
-  setUI("tagSheetOpen", false)
+  ui.tagSheetOpen = false
 }
 
 export const toggleFilterTag = (ID: string): void => {
-  const active = uiValue<string[]>("filterTags", [])
+  const active = activeTags.get()
 
-  setUI(
-    "filterTags",
-    active.includes(ID) ? active.filter((item) => item !== ID) : [...active, ID],
-  )
+  ui.filterTags = active.includes(ID) ? active.filter((item) => item !== ID) : [...active, ID]
 }
 
 export const clearTodoFilters = (): void => {
-  setUI("todoQuery", "")
-  setUI("filterTags", [])
+  ui.todoQuery = ""
+  ui.filterTags = []
+  ui.folderFilter = ""
 }
 
-export const openCalendar = (target: string, withTime = true): void => {
-  const value = uiValue(target, "")
+export const openCalendar = (target: DateField, withTime = true): void => {
+  const value = ui[target]
   const parts = dateParts(value)
   const time = /(\d{1,2}):(\d{1,2}):(\d{1,2})/.exec(value)
   const now = new Date()
 
-  setUI("calendarTarget", target)
-  setUI("calendarYear", parts?.year ?? now.getFullYear())
-  setUI("calendarMonth", parts ? parts.month - 1 : now.getMonth())
-  setUI("calendarWithTime", withTime)
-  setUI(
-    "calendarHour",
-    withTime && time ? String(Number(time[1])).padStart(2, "0") : "",
-  )
-  setUI(
-    "calendarMinute",
-    withTime && time ? String(Number(time[2])).padStart(2, "0") : "",
-  )
-  setUI(
-    "calendarSecond",
-    withTime && time ? String(Number(time[3])).padStart(2, "0") : "",
-  )
-  setUI("calendarOpen", true)
+  ui.calendarTarget = target
+  ui.calendarYear = parts?.year ?? now.getFullYear()
+  ui.calendarMonth = parts ? parts.month - 1 : now.getMonth()
+  ui.calendarWithTime = withTime
+  ui.calendarHour = withTime && time ? String(Number(time[1])).padStart(2, "0") : ""
+  ui.calendarMinute = withTime && time ? String(Number(time[2])).padStart(2, "0") : ""
+  ui.calendarSecond = withTime && time ? String(Number(time[3])).padStart(2, "0") : ""
+  ui.calendarOpen = true
 }
 
 export const closeCalendar = (): void => {
-  setUI("calendarOpen", false)
+  ui.calendarOpen = false
 }
 
 export const shiftCalendar = (delta: number): void => {
-  const year = uiValue("calendarYear", new Date().getFullYear())
-  const month = uiValue("calendarMonth", new Date().getMonth())
+  const year = ui.calendarYear
+  const month = ui.calendarMonth
   const next = new Date(year, month + delta, 1)
 
-  setUI("calendarYear", next.getFullYear())
-  setUI("calendarMonth", next.getMonth())
+  ui.calendarYear = next.getFullYear()
+  ui.calendarMonth = next.getMonth()
 }
 
 export const shiftCalendarYear = (delta: number): void => {
-  const year = uiValue("calendarYear", new Date().getFullYear())
+  const year = ui.calendarYear
 
-  setUI("calendarYear", year + delta)
+  ui.calendarYear = year + delta
 }
 
 export const setDraftDateMode = (mode: "allDay" | "range"): void => {
-  setUI("draftDateMode", mode)
+  ui.draftDateMode = mode
 
   if (mode !== "allDay") return
 
-  const start = uiValue("draftStart", "")
-  const end = uiValue("draftEnd", "")
+  const start = ui.draftStart
+  const end = ui.draftEnd
 
-  if (!end && start) setUI("draftEnd", start)
+  if (!end && start) ui.draftEnd = start
 }
 
 export const pickCalendarDay = (day: number): void => {
-  const target = uiValue("calendarTarget", "")
+  const target = ui.calendarTarget
 
   if (!target) return
 
-  const year = uiValue("calendarYear", new Date().getFullYear())
-  const month = uiValue("calendarMonth", new Date().getMonth())
-  const rawHour = uiValue("calendarHour", "").trim()
-  const rawMinute = uiValue("calendarMinute", "").trim()
-  const rawSecond = uiValue("calendarSecond", "").trim()
+  const year = ui.calendarYear
+  const month = ui.calendarMonth
+  const rawHour = ui.calendarHour.trim()
+  const rawMinute = ui.calendarMinute.trim()
+  const rawSecond = ui.calendarSecond.trim()
   const date = `${String(day).padStart(2, "0")}.${String(month + 1).padStart(2, "0")}.${year}`
   const pad = (value: string, max: number) =>
     String(Math.min(Number(value) || 0, max)).padStart(2, "0")
 
-  setUI(
-    target,
-    rawHour
-      ? `${date} ${pad(rawHour, 23)}:${pad(rawMinute, 59)}:${pad(rawSecond, 59)}`
-      : date,
-  )
+  ui[target] = rawHour
+    ? `${date} ${pad(rawHour, 23)}:${pad(rawMinute, 59)}:${pad(rawSecond, 59)}`
+    : date
   closeCalendar()
 }
 
 export const pickCalendarToday = (): void => {
   const now = new Date()
 
-  setUI("calendarYear", now.getFullYear())
-  setUI("calendarMonth", now.getMonth())
+  ui.calendarYear = now.getFullYear()
+  ui.calendarMonth = now.getMonth()
   pickCalendarDay(now.getDate())
 }
 
 export const updateDraft = (patch: Partial<Todo>): void => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
-  setUI("draft", { ...draft, ...patch })
+  ui.draft = { ...draft, ...patch }
 }
 
 export const saveDraft = (): void => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
-  const mode = uiValue<"allDay" | "range">("draftDateMode", "allDay")
-  const startText = uiValue("draftStart", "")
-  const endText = uiValue("draftEnd", "")
-  const dayText = endText.trim() ? endText : startText
+  const mode = ui.draftDateMode
+  const startText = ui.draftStart
+  const endText = ui.draftEnd
+  const dayText = (endText.trim() ? endText : startText).trim().split(/\s+/)[0] ?? ""
 
   const startAT = mode === "allDay" ? null : parseTime(startText)
   const endAT = parseTime(mode === "allDay" ? dayText : endText)
-  const createdAT = parseTime(uiValue("draftCreated", ""))
-  const completedAT = parseTime(uiValue("draftCompleted", ""))
+  const createdAT = parseTime(ui.draftCreated)
+  const completedAT = parseTime(ui.draftCompleted)
 
   if (
     startAT === undefined ||
@@ -267,17 +250,14 @@ export const saveDraft = (): void => {
     createdAT === undefined ||
     completedAT === undefined
   ) {
-    setUI(
-      "editorError",
-      "Дата: ДД.ММ.ГГГГ, время: ЧЧ:ММ:СС (время можно не указывать)",
-    )
+    ui.editorError = "Дата: ДД.ММ.ГГГГ, время: ЧЧ:ММ:СС (время можно не указывать)"
     return
   }
 
   const text = draft.text.trim()
 
   if (!text) {
-    setUI("editorError", "Название не может быть пустым")
+    ui.editorError = "Название не может быть пустым"
     return
   }
 
@@ -289,12 +269,12 @@ export const saveDraft = (): void => {
     startAllDay: mode === "range" && isDateOnly(startText),
     endAllDay: mode === "allDay" ? endAT !== null : isDateOnly(endText),
     completedAT,
-    completedAllDay: isDateOnly(uiValue("draftCompleted", "")),
+    completedAllDay: isDateOnly(ui.draftCompleted),
   }
 
   if (createdAT !== null) {
     next.createdAT = createdAT
-    next.createdAllDay = isDateOnly(uiValue("draftCreated", ""))
+    next.createdAllDay = isDateOnly(ui.draftCreated)
   }
 
   saveTask({ task: next })
@@ -302,7 +282,7 @@ export const saveDraft = (): void => {
 }
 
 export const deleteDraft = async (): Promise<void> => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
@@ -318,7 +298,7 @@ export const deleteDraft = async (): Promise<void> => {
 }
 
 export const toggleDraftTag = (ID: string): void => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
@@ -330,16 +310,16 @@ export const toggleDraftTag = (ID: string): void => {
 }
 
 export const pickCustomTagColor = async (): Promise<void> => {
-  const current = uiValue("tagColor", TAG_PALETTE[3]!)
+  const current = ui.tagColor
   const picked = await dialog.color({ title: "Цвет тега", color: current })
 
-  if (picked) setUI("tagColor", picked)
+  if (picked) ui.tagColor = picked
 }
 
 export const createDraftTag = (): void => {
-  const name = uiValue("tagName", "").trim()
-  const color = uiValue("tagColor", TAG_PALETTE[3]!)
-  const draft = getDraft()
+  const name = ui.tagName.trim()
+  const color = ui.tagColor
+  const draft = ui.draft
 
   if (!name || !draft) return
 
@@ -350,12 +330,12 @@ export const createDraftTag = (): void => {
   if (!draft.tags.includes(tag.ID))
     updateDraft({ tags: [...draft.tags, tag.ID] })
 
-  setUI("tagName", "")
+  ui.tagName = ""
 }
 
 export const addDraftSubtask = (): void => {
-  const draft = getDraft()
-  const text = uiValue("subtaskText", "").trim()
+  const draft = ui.draft
+  const text = ui.subtaskText.trim()
 
   if (!draft || !text) return
 
@@ -368,14 +348,14 @@ export const addDraftSubtask = (): void => {
   }
 
   updateDraft({ subtasks: [...draft.subtasks, subtask] })
-  setUI("subtaskText", "")
+  ui.subtaskText = ""
 }
 
 export const updateDraftSubtask = (
   index: number,
   patch: Partial<Subtask>,
 ): void => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
@@ -387,7 +367,7 @@ export const updateDraftSubtask = (
 }
 
 export const removeDraftSubtask = (index: number): void => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
@@ -397,7 +377,7 @@ export const removeDraftSubtask = (index: number): void => {
 }
 
 export const attachDraftFiles = async (): Promise<void> => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
@@ -405,7 +385,7 @@ export const attachDraftFiles = async (): Promise<void> => {
 
   if (added.length === 0) return
 
-  const current = getDraft()
+  const current = ui.draft
 
   if (!current) return
 
@@ -413,7 +393,7 @@ export const attachDraftFiles = async (): Promise<void> => {
 }
 
 export const removeDraftFile = (path: string): void => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
@@ -423,7 +403,7 @@ export const removeDraftFile = (path: string): void => {
 
 export const openAttachment = (file: Attachment): void => {
   if (isImage(file.name)) {
-    setUI("viewerPath", file.path)
+    ui.viewerPath = file.path
     return
   }
 
@@ -431,37 +411,15 @@ export const openAttachment = (file: Attachment): void => {
 }
 
 export const openSync = (): void => {
-  setUI("syncHostInput", state.syncSettings.host)
-  setUI("syncPortInput", state.syncSettings.port)
-  setUI("syncPasswordInput", state.syncSettings.password)
-  setUI("syncError", "")
-  setUI("syncOpen", true)
+  ui.syncOpen = true
 }
 
 export const closeSync = (): void => {
-  setUI("syncOpen", false)
-}
-
-export const saveSyncForm = async (): Promise<void> => {
-  const host = uiValue("syncHostInput", "").trim()
-  const portText = uiValue("syncPortInput", "").trim()
-  const port = Number(portText)
-
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    setUI("syncError", "Порт должен быть от 1 до 65535")
-    return
-  }
-
-  closeSync()
-  await saveSyncConnection({
-    host,
-    port: portText,
-    password: uiValue("syncPasswordInput", ""),
-  })
+  ui.syncOpen = false
 }
 
 export const copyDraft = async (): Promise<void> => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
@@ -472,7 +430,7 @@ export const copyDraft = async (): Promise<void> => {
 }
 
 export const shareDraft = async (): Promise<void> => {
-  const draft = getDraft()
+  const draft = ui.draft
 
   if (!draft) return
 
@@ -483,20 +441,58 @@ export const shareDraft = async (): Promise<void> => {
   } catch {}
 }
 
-export const handleBack = (): void => {
-  if (uiValue("viewerPath", "")) {
-    setUI("viewerPath", "")
-    return
+const closeTopLayer = (): boolean => {
+  if (ui.calendarOpen) {
+    closeCalendar()
+
+    return true
   }
 
-  if (uiValue("editorOpen", false)) {
+  if (ui.tagSheetOpen) {
+    closeTagSheet()
+
+    return true
+  }
+
+  if (ui.viewerPath) {
+    ui.viewerPath = ""
+
+    return true
+  }
+
+  if (ui.editorOpen) {
     closeEditor()
-    return
+
+    return true
   }
 
-  if (uiValue("syncOpen", false)) closeSync()
+  if (ui.syncOpen) {
+    closeSync()
+
+    return true
+  }
+
+  if (ui.tagFilterOpen) {
+    closeTagFilter()
+
+    return true
+  }
+
+  if (ui.foldersOpen) {
+    closeFolders()
+
+    return true
+  }
+
+  return false
+}
+
+export const handleBack = (): void => {
+  if (closeTopLayer()) return
+
+  void flushState().finally(() => app.quit())
 }
 
 export const focusNewTask = (): void => {
-  setUI("newTaskFocus", true)
+  ui.newTaskFocus = true
 }

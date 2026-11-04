@@ -1,6 +1,6 @@
 import { notify, permissions } from "pulsar"
 import { isAndroid } from "./platform.ts"
-import { app, state } from "./state.ts"
+import { state, ui } from "./state.ts"
 
 let syncWasOnline = false
 let lastSyncAlertAT = 0
@@ -30,10 +30,7 @@ const notifySyncError = async (): Promise<void> => {
 }
 
 export const setStatus = (status: string): void => {
-  app.store.set("syncStatus", status)
-  app.store.set("syncHost", state.syncSettings.host)
-  app.store.set("syncPort", state.syncSettings.port)
-  app.store.set("syncPassword", state.syncSettings.password)
+  ui.syncStatus = status
 
   if (status === "ok") {
     syncWasOnline = true

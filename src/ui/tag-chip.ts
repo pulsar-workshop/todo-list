@@ -1,8 +1,9 @@
-import { Chip, defineComponent, type ColorValue } from "pulsar"
+import { Chip, component, type ColorValue } from "pulsar"
 import { textColor } from "../theme.ts"
 import type { Tag } from "../types.ts"
 
-export const TagChip = defineComponent<{
+export const TagChip = component<{
+  key?: string
   tag: Tag
   selected?: boolean
   onClick?: () => void

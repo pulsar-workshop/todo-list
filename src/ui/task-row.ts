@@ -8,7 +8,7 @@ import {
   Row,
   Spacer,
   Text,
-  defineComponent,
+  component,
   type ColorValue,
   type UiNode,
 } from "pulsar"
@@ -44,7 +44,8 @@ const metaLine = (todo: Todo): string => {
   return parts.join(" · ")
 }
 
-export const TaskRow = defineComponent<{
+export const TaskRow = component<{
+  key: string
   todo: Todo
   visible?: boolean
 }>(({ todo, visible = true }) => {
