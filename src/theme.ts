@@ -1,4 +1,11 @@
-import { catppuccinTheme, theme, type ColorValue } from "pulsar"
+import {
+  catppuccinTheme,
+  direction,
+  setLocale,
+  system,
+  theme,
+  type ColorValue,
+} from "pulsar"
 import { app, uiValue } from "./state.ts"
 
 const lightPalette = {
@@ -37,6 +44,12 @@ export const applyTheme = async (dark = isDarkTheme()): Promise<void> => {
   const base = catppuccinTheme(dark ? "frappe" : "latte")
 
   const palette = dark ? darkPalette : lightPalette
+  const locale = await system
+    .locale()
+    .then((info) => info.locale)
+    .catch(() => "ru")
+
+  setLocale(locale)
 
   await theme.set({
     ...base,
@@ -54,6 +67,7 @@ export const applyTheme = async (dark = isDarkTheme()): Promise<void> => {
     fontFamily: "Noto Sans",
     fontScale: 1,
     density: 1,
+    direction: direction(locale),
   })
 }
 
