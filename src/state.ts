@@ -1,8 +1,11 @@
-import { App, type ColorValue } from "pulsar"
+import { App, createBreakpoints, type ColorValue } from "pulsar"
 import { DEFAULT_PORT } from "./model.ts"
 import type { Folder, SyncSettings, Tag, Todo } from "./types.ts"
 
 export const app = new App()
+
+export const breakpoints = createBreakpoints(app)
+
 
 export const state = {
   sync: { dirty: false },

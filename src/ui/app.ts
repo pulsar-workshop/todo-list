@@ -4,7 +4,7 @@ import {
   Card,
   Chip,
   Column,
-  EmptyState,
+  Icon,
   Input,
   Page,
   Row,
@@ -15,7 +15,15 @@ import {
   Wrap,
 } from "pulsar"
 import { addTodo, deleteFolder } from "../actions.ts"
-import { setUI, syncColor, syncLabel, uiValue, app, state } from "../state.ts"
+import {
+  breakpoints,
+  setUI,
+  syncColor,
+  syncLabel,
+  uiValue,
+  app,
+  state,
+} from "../state.ts"
 import { syncNow } from "../sync.ts"
 import {
   backgroundColor,
@@ -29,12 +37,13 @@ import { EditorPage } from "./editor.ts"
 import {
   clearTodoFilters,
   createFolder,
-  focusNewTask,
   openSync,
+  openTagFilter,
   toggleFilterTag,
 } from "./state.ts"
 import { SyncPage } from "./sync-dialog.ts"
 import { TagChip } from "./tag-chip.ts"
+import { TagFilterSheet } from "./tag-filter-sheet.ts"
 import { TaskRow } from "./task-row.ts"
 import { ViewerPage } from "./viewer.ts"
 
@@ -50,11 +59,11 @@ const submitNewTask = (): void => {
   setUI("newTaskText", "")
 }
 
-const HeaderRow = () => {
+const HeaderRow = (compact: boolean) => {
   const focus = uiValue("newTaskFocus", false)
 
   return Row(
-    { fillWidth: true, gap: 10 },
+    { fillWidth: true, gap: compact ? 6 : 10 },
     Column(
       { gap: 3, expand: true },
       Text({
@@ -71,7 +80,9 @@ const HeaderRow = () => {
           color: textColor(true),
         }),
         Box({ width: 6, height: 6, radius: 3, color: syncColor() }),
-        Text({ text: syncLabel(), size: 12, color: syncColor() }),
+        compact
+          ? null
+          : Text({ text: syncLabel(), size: 12, color: syncColor() }),
       ),
     ),
     Spacer({ fillWidth: true }),
@@ -81,23 +92,59 @@ const HeaderRow = () => {
       tooltip: "Синхронизировать",
       onClick: () => (state.syncSettings.host ? void syncNow() : openSync()),
     }),
-    Button({
-      variant: "ghost",
-      icon: isDarkTheme() ? "light_mode" : "dark_mode",
-      tooltip: "Сменить тему",
-      onClick: toggleTheme,
-    }),
+    compact
+      ? null
+      : Button({
+          variant: "ghost",
+          icon: isDarkTheme() ? "light_mode" : "dark_mode",
+          tooltip: "Сменить тему",
+          onClick: toggleTheme,
+        }),
     Button({
       variant: "ghost",
       icon: "settings",
       tooltip: "Настройки",
       onClick: openSync,
     }),
-    Button({ icon: "add", onClick: focusNewTask }, "Задача"),
   )
 }
 
+const EmptyStateView = () =>
+  Column(
+    { gap: 10, padding: 24, align: "center", fillWidth: true },
+    Box(
+      {
+        width: 64,
+        height: 64,
+        radius: 32,
+        color: surfaceColor(),
+        borderWidth: 1,
+        borderColor: borderColor(),
+        padding: 18,
+        align: "center",
+      },
+      Icon({ name: "checklist", size: 28, color: textColor(true) }),
+    ),
+    Text({
+      text: "Пока пусто",
+      size: 17,
+      weight: "semibold",
+      color: textColor(false),
+      align: "center",
+      fillWidth: true,
+    }),
+    Text({
+      text: "Добавьте первую задачу.",
+      size: 13,
+      color: textColor(true),
+      align: "center",
+      wrap: true,
+      fillWidth: true,
+    }),
+  )
+
 const MainPage = () => {
+  const compact = breakpoints.is("compact")
   const query = uiValue("todoQuery", "").trim().toLowerCase()
   const filterIDs = uiValue<string[]>("filterTags", [])
   const storedFolder = uiValue<string>("folderFilter", "")
@@ -107,9 +154,7 @@ const MainPage = () => {
       ? storedFolder
       : ""
   const folderCreating = uiValue("folderCreating", false)
-  const usedTags = state.tags.filter((tag) =>
-    state.todos.some((todo) => todo.tags.includes(tag.ID)),
-  )
+  const selectedTags = state.tags.filter((tag) => filterIDs.includes(tag.ID))
   const todos = state.todos.filter((todo) => {
     if (folderFilter === "none" && todo.folderID) return false
     if (folderFilter && folderFilter !== "none" && todo.folderID !== folderFilter)
@@ -127,7 +172,11 @@ const MainPage = () => {
   return Box(
     { key: "main", fill: true, color: backgroundColor() },
     Page(
-      { padding: 20, gap: 14, header: HeaderRow() },
+      {
+        padding: compact ? 14 : 20,
+        gap: compact ? 10 : 14,
+        header: HeaderRow(compact),
+      },
       Wrap(
         { gap: 6, fillWidth: true },
         Chip(
@@ -232,13 +281,26 @@ const MainPage = () => {
             )
           : null,
       ),
-      usedTags.length > 0
+      state.tags.length > 0
+        ? Row(
+            { gap: 8, fillWidth: true, align: "center" },
+            Button(
+              {
+                variant: "outline",
+                icon: "sell",
+                onClick: openTagFilter,
+              },
+              filterIDs.length > 0 ? `Теги · ${filterIDs.length}` : "Теги",
+            ),
+          )
+        : null,
+      filterIDs.length > 0
         ? Wrap(
             { gap: 6, fillWidth: true },
-            ...usedTags.map((tag) =>
+            ...selectedTags.map((tag) =>
               TagChip({
                 tag,
-                selected: filterIDs.includes(tag.ID),
+                selected: true,
                 onClick: () => toggleFilterTag(tag.ID),
               }),
             ),
@@ -248,24 +310,35 @@ const MainPage = () => {
         test: todos.length === 0,
         then: () =>
           state.todos.length === 0
-            ? EmptyState({
-                icon: "checklist",
-                title: "Пока пусто",
-                text: "Добавьте первую задачу.",
-                action: Button({ onClick: focusNewTask }, "Новая задача"),
-              })
-            : EmptyState({
-                icon: "search_off",
-                title: "Ничего не найдено",
-                text: "Измените запрос или сбросьте фильтры.",
-                action: Button({ onClick: clearTodoFilters }, "Сбросить"),
-              }),
+            ? EmptyStateView()
+            : Column(
+                { gap: 10, padding: 24, align: "center", fillWidth: true },
+                Icon({ name: "search_off", size: 32, color: textColor(true) }),
+                Text({
+                  text: "Ничего не найдено",
+                  size: 17,
+                  weight: "semibold",
+                  color: textColor(false),
+                  align: "center",
+                  fillWidth: true,
+                }),
+                Text({
+                  text: "Измените запрос или сбросьте фильтры.",
+                  size: 13,
+                  color: textColor(true),
+                  align: "center",
+                  wrap: true,
+                  fillWidth: true,
+                }),
+                Button({ onClick: clearTodoFilters }, "Сбросить"),
+              ),
         else: () =>
           Column(
             { gap: 8, fillWidth: true },
             ...todos.map((todo) => TaskRow({ todo })),
           ),
       }),
+      uiValue("tagFilterOpen", false) ? TagFilterSheet() : null,
     ),
   )
 }

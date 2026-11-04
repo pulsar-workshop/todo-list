@@ -75,6 +75,26 @@ export const createFolder = (): void => {
   if (folder) setUI("folderFilter", folder.ID)
 }
 
+export const openTagFilter = (): void => {
+  setUI("tagFilterOpen", true)
+}
+
+export const closeTagFilter = (): void => {
+  setUI("tagFilterOpen", false)
+}
+
+export const clearTagFilters = (): void => {
+  setUI("filterTags", [])
+}
+
+export const openTagSheet = (): void => {
+  setUI("tagSheetOpen", true)
+}
+
+export const closeTagSheet = (): void => {
+  setUI("tagSheetOpen", false)
+}
+
 export const toggleFilterTag = (ID: string): void => {
   const active = uiValue<string[]>("filterTags", [])
 

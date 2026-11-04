@@ -15,33 +15,37 @@ import {
   Text,
   TextArea,
   Wrap,
-  type ColorValue,
 } from "pulsar"
-import { deleteTag, exportAttachment } from "../actions.ts"
+import { exportAttachment } from "../actions.ts"
 import { fileMeta, formatDateValue } from "../format.ts"
 import { isImage } from "../model.ts"
-import { fileURL, getDraft, state, uiValue, setUI } from "../state.ts"
-import { backgroundColor, borderColor, textColor } from "../theme.ts"
+import {
+  breakpoints,
+  fileURL,
+  getDraft,
+  state,
+  uiValue,
+  setUI,
+} from "../state.ts"
+import { backgroundColor, textColor } from "../theme.ts"
 import type { Attachment, Subtask } from "../types.ts"
 import {
-  TAG_PALETTE,
   addDraftSubtask,
   attachDraftFiles,
   closeEditor,
   copyDraft,
-  createDraftTag,
   deleteDraft,
   openAttachment,
   openCalendar,
-  pickCustomTagColor,
+  openTagSheet,
   removeDraftFile,
   removeDraftSubtask,
   saveDraft,
-  toggleDraftTag,
   updateDraft,
   updateDraftSubtask,
 } from "./state.ts"
 import { CalendarSheet } from "./calendar.ts"
+import { TagSheet } from "./tag-sheet.ts"
 import { TagChip } from "./tag-chip.ts"
 
 const section = (text: string) =>
@@ -201,16 +205,20 @@ const dateField = (label: string, key: string) =>
   )
 
 export const EditorPage = () => {
+  const compact = breakpoints.is("compact")
   const draft = getDraft()
   const editorError = uiValue("editorError", "")
   const currentTags = draft?.tags ?? []
-  const tags = state.tags
-  const tagColor = uiValue("tagColor", TAG_PALETTE[3]!)
 
   return Box(
     { key: "editor", fill: true, color: backgroundColor() },
     Page(
-      { padding: 16, gap: 10, header: header(), footer: footer() },
+      {
+        padding: compact ? 12 : 16,
+        gap: 10,
+        header: header(),
+        footer: footer(),
+      },
       Input({
         value: draft?.text ?? "",
         placeholder: "Название",
@@ -234,11 +242,17 @@ export const EditorPage = () => {
         size: 11,
         color: textColor(true),
       }),
-      Row(
-        { gap: 8, fillWidth: true, align: "start" },
-        dateField("С", "draftStart"),
-        dateField("До (дедлайн)", "draftEnd"),
-      ),
+      compact
+        ? Column(
+            { gap: 8, fillWidth: true },
+            dateField("С", "draftStart"),
+            dateField("До (дедлайн)", "draftEnd"),
+          )
+        : Row(
+            { gap: 8, fillWidth: true, align: "start" },
+            dateField("С", "draftStart"),
+            dateField("До (дедлайн)", "draftEnd"),
+          ),
       Row(
         { gap: 8, fillWidth: true, align: "center" },
         Text({ text: "Создано", size: 12, color: textColor(true), width: 76 }),
@@ -275,71 +289,21 @@ export const EditorPage = () => {
       }),
       Divider(),
       section("ТЕГИ"),
-      Wrap(
-        { gap: 6, fillWidth: true },
-        ...tags.map((tag) =>
-          TagChip({
-            tag,
-            selected: currentTags.includes(tag.ID),
-            onClick: () => toggleDraftTag(tag.ID),
-            onRemove: () => void deleteTag({ ID: tag.ID }),
-          }),
-        ),
-      ),
-      Row(
-        { gap: 8, fillWidth: true },
-        Input({
-          value: uiValue("tagName", ""),
-          variant: "outline",
-          textColor: textColor(false),
-          placeholder: "Новый тег",
-          expand: true,
-          onInput: (value) => setUI("tagName", value),
-          onSubmitted: createDraftTag,
-        }),
-        Button({ onClick: createDraftTag }, "Добавить"),
-      ),
-      Wrap(
-        { gap: 8, fillWidth: true },
-        ...TAG_PALETTE.map((color) =>
-          Box({
-            width: 30,
-            height: 30,
-            radius: 15,
-            color: color as ColorValue,
-            borderWidth: tagColor === color ? 2 : 1,
-            borderColor: tagColor === color ? textColor(false) : borderColor(),
-            tooltip: color,
-            onClick: () => setUI("tagColor", color),
-          }),
-        ),
-        Stack(
-          { width: 30, height: 30 },
-          Box({
-            width: 30,
-            height: 30,
-            radius: 15,
-            color: TAG_PALETTE.includes(tagColor)
-              ? "transparent"
-              : (tagColor as ColorValue),
-            gradient: TAG_PALETTE.includes(tagColor)
-              ? {
-                  from: "#f43f5e",
-                  to: "#0ea5e9",
-                  direction: "horizontal",
-                }
-              : undefined,
-            borderWidth: TAG_PALETTE.includes(tagColor) ? 1 : 2,
-            borderColor: TAG_PALETTE.includes(tagColor)
-              ? borderColor()
-              : textColor(false),
-            tooltip: "Свой цвет",
-            onClick: () => void pickCustomTagColor(),
-          }),
-          TAG_PALETTE.includes(tagColor)
-            ? Icon({ name: "add", size: 16, color: "#ffffff", align: "center" })
-            : null,
-        ),
+      currentTags.length > 0
+        ? Wrap(
+            { gap: 6, fillWidth: true },
+            ...currentTags.map((ID) => {
+              const tag = state.tags.find((item) => item.ID === ID)
+
+              return tag
+                ? TagChip({ tag, selected: true, onClick: openTagSheet })
+                : null
+            }),
+          )
+        : Text({ text: "Теги не выбраны", size: 12, color: textColor(true) }),
+      Button(
+        { variant: "outline", icon: "sell", onClick: openTagSheet },
+        "Выбрать теги",
       ),
       Divider(),
       section("ПОДЗАДАЧИ"),
@@ -416,6 +380,7 @@ export const EditorPage = () => {
         "Прикрепить файл",
       ),
       uiValue("calendarOpen", false) ? CalendarSheet() : null,
+      uiValue("tagSheetOpen", false) ? TagSheet() : null,
     ),
   )
 }
