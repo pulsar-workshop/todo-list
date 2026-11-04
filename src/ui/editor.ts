@@ -341,6 +341,9 @@ export const EditorPage = () => {
                 size: 11,
                 color: textColor(true),
                 fillWidth: true,
+                wrap: true,
+                maxLines: 2,
+                elide: "right",
               }),
             ),
             IconButton({
