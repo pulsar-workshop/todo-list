@@ -109,11 +109,13 @@ const attachmentRow = (file: Attachment) =>
     { gap: 8, fillWidth: true, align: "center" },
     attachmentIcon(file),
     Column(
-      { gap: 2, expand: true },
+      { gap: 2, expand: true, fillWidth: true },
       Text({
         text: file.name,
         size: 13,
         color: textColor(false),
+        fillWidth: true,
+        maxLines: 1,
         elide: "middle",
       }),
       fileMeta(file.size, file.modifiedAT)
@@ -121,6 +123,9 @@ const attachmentRow = (file: Attachment) =>
             text: fileMeta(file.size, file.modifiedAT),
             size: 11,
             color: textColor(true),
+            fillWidth: true,
+            maxLines: 1,
+            elide: "right",
           })
         : null,
     ),

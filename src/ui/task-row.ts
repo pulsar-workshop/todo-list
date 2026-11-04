@@ -4,11 +4,13 @@ import {
   Card,
   Checkbox,
   Column,
+  Icon,
   Row,
   Spacer,
   Text,
   defineComponent,
   type ColorValue,
+  type UiNode,
 } from "pulsar"
 import { toggleTodo } from "../actions.ts"
 import { formatDateValue, formatDates, subtaskLabel } from "../format.ts"
@@ -38,8 +40,6 @@ const metaLine = (todo: Todo): string => {
     )
   if (todo.startAT !== null || todo.endAT !== null)
     parts.push(formatDates(todo))
-  if (todo.subtasks.length > 0) parts.push(subtaskLabel(todo.subtasks))
-  if (todo.files.length > 0) parts.push(`Файлов: ${todo.files.length}`)
 
   return parts.join(" · ")
 }
@@ -59,6 +59,26 @@ export const TaskRow = defineComponent<{
       Text({ text: tag.name, size: 11, color: textColor(true) }),
     ),
   )
+
+  const stats: UiNode[] = []
+
+  if (todo.subtasks.length > 0)
+    stats.push(
+      Row(
+        { gap: 4, align: "center" },
+        Icon({ name: "checklist", size: 14, color: textColor(true) }),
+        Text({ text: subtaskLabel(todo.subtasks), size: 11, color: textColor(true) }),
+      ),
+    )
+
+  if (todo.files.length > 0)
+    stats.push(
+      Row(
+        { gap: 4, align: "center" },
+        Icon({ name: "attach_file", size: 14, color: textColor(true) }),
+        Text({ text: `Файлов: ${todo.files.length}`, size: 11, color: textColor(true) }),
+      ),
+    )
 
   return Card(
     {
@@ -110,6 +130,9 @@ export const TaskRow = defineComponent<{
           maxLines: 2,
           elide: "right",
         }),
+        stats.length > 0
+          ? Row({ gap: 12, fillWidth: true, align: "center" }, ...stats)
+          : null,
         tagLabels.length > 0
           ? Row({ gap: 10, fillWidth: true }, ...tagLabels)
           : null,
