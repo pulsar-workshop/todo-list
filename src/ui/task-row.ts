@@ -92,7 +92,6 @@ export const TaskRow = defineComponent<{
       borderColor: borderColor(),
       borderWidth: 1,
       opacity: todo.done ? 0.62 : 1,
-      onLongPress: () => openEditor(todo),
     },
     Row(
       { gap: 10, fillWidth: true },
