@@ -8,6 +8,7 @@ import { migrate } from "./db/migrate.ts"
 import { files, folders, tags, todos } from "./db/schema.ts"
 
 const THUMB_PREFIX = "thumb:"
+const MAX_UPLOAD_BYTES = 1024 * 1024 * 1024
 const VIDEO_PATTERN = /\.(mp4|m4v|mov|webm|mkv|avi|3gp)$/i
 
 const projectDir = import.meta.dir
@@ -48,6 +49,7 @@ const trashDays = (): number => {
 }
 
 type State = {
+  binaryFiles: boolean
   todos: unknown[]
   tags: unknown[]
   folders: unknown[]
@@ -193,6 +195,7 @@ const state = (): State => {
   const fileRows = db.select({ key: files.key }).from(files).orderBy(files.key).all()
 
   return {
+    binaryFiles: true,
     todos: todoRows.map((row) => JSON.parse(row.data) as unknown),
     tags: tagRows.map((row) => JSON.parse(row.data) as unknown),
     folders: folderRows.map((row) => JSON.parse(row.data) as unknown),
@@ -229,6 +232,7 @@ const json = (value: unknown, status = 200): Response => {
 const server = Bun.serve({
   port,
   hostname: "0.0.0.0",
+  maxRequestBodySize: MAX_UPLOAD_BYTES,
   async fetch(request) {
     const url = new URL(request.url)
     const path = url.pathname
@@ -399,6 +403,18 @@ const server = Bun.serve({
   },
 })
 
+const readUpload = async (request: Request): Promise<Buffer | null> => {
+  if (request.headers.get("content-type") === "application/octet-stream") {
+    return Buffer.from(await request.arrayBuffer())
+  }
+
+  const body = (await request.json().catch(() => null)) as unknown
+
+  if (!isRecord(body) || typeof body.data !== "string") return null
+
+  return Buffer.from(body.data, "base64")
+}
+
 async function handleFile(request: Request, url: URL): Promise<Response> {
   const key = url.searchParams.get("key")
 
@@ -418,17 +434,21 @@ async function handleFile(request: Request, url: URL): Promise<Response> {
 
     if (!row) return new Response("not found", { status: 404 })
 
+    if (url.searchParams.get("raw") === "1") {
+      return new Response(new Uint8Array(row.data), {
+        headers: { "content-type": "application/octet-stream" },
+      })
+    }
+
     const data = Buffer.from(row.data).toString("base64")
 
     return json({ key, size: row.data.byteLength, data })
   }
 
   if (request.method === "PUT") {
-    const body = (await request.json().catch(() => null)) as unknown
+    const data = await readUpload(request)
 
-    if (!isRecord(body) || typeof body.data !== "string") return new Response("expected base64 data", { status: 400 })
-
-    const data = Buffer.from(body.data, "base64")
+    if (!data) return new Response("expected file data", { status: 400 })
 
     db.insert(files)
       .values({ key, data, updatedAT: Date.now() })

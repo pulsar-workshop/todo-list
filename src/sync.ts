@@ -23,6 +23,8 @@ import type {
   Todo,
 } from "./types.ts"
 
+const TRANSFER_IDLE_MS = 30000
+
 let revision = 0
 let pushing: Promise<void> | null = null
 let pushQueued = false
@@ -64,6 +66,7 @@ const parseState = (text: string): RemoteState | null => {
   if (!isRecord(parsed)) return null
 
   return {
+    binaryFiles: parsed.binaryFiles === true,
     todos: Array.isArray(parsed.todos)
       ? parsed.todos
           .map(parseTodo)
@@ -244,11 +247,95 @@ const attachmentRoot = async (): Promise<string> => {
   return `${dirs.data}/attachments`
 }
 
+const fileURLFor = (base: string, key: string, raw: boolean): string => {
+  return `${base}/file?key=${encodeURIComponent(key)}${raw ? "&raw=1" : ""}`
+}
+
+const saveBase64File = async (
+  url: string,
+  destination: string,
+): Promise<boolean> => {
+  const response = await net.fetch(url, {
+    headers: syncHeaders(),
+    timeoutMs: 10000,
+  })
+
+  if (response.status !== 200) return false
+
+  const parsed = JSON.parse(response.text) as unknown
+
+  if (!isRecord(parsed) || typeof parsed.data !== "string") return false
+
+  await fs.writeFile(destination, parsed.data, "base64")
+
+  return true
+}
+
+const saveRawFile = async (
+  url: string,
+  destination: string,
+): Promise<boolean> => {
+  const partial = `${destination}.part`
+  const result = await net.download(url, partial, {
+    headers: syncHeaders(),
+    timeoutMs: TRANSFER_IDLE_MS,
+  })
+
+  if (result.status !== 200) {
+    await fs.remove(partial)
+
+    return false
+  }
+
+  await fs.rename(partial, destination)
+
+  return true
+}
+
+const receiveFile = async (
+  base: string,
+  key: string,
+  destination: string,
+  binary: boolean,
+): Promise<boolean> => {
+  const url = fileURLFor(base, key, binary)
+
+  return binary ? saveRawFile(url, destination) : saveBase64File(url, destination)
+}
+
+const sendFile = async (
+  base: string,
+  key: string,
+  path: string,
+  binary: boolean,
+): Promise<void> => {
+  const url = fileURLFor(base, key, false)
+
+  if (binary) {
+    await net.fetch(url, {
+      method: "PUT",
+      headers: { ...syncHeaders(), "content-type": "application/octet-stream" },
+      bodyFile: path,
+      timeoutMs: TRANSFER_IDLE_MS,
+    })
+
+    return
+  }
+
+  await net.fetch(url, {
+    method: "PUT",
+    headers: syncHeaders(),
+    body: JSON.stringify({ data: await fs.readFile(path, "base64") }),
+    timeoutMs: 10000,
+  })
+}
+
 const ensureThumb = async (
   base: string,
   root: string,
   todo: Todo,
   file: Attachment,
+  binary: boolean,
 ): Promise<boolean> => {
   if (!isVideo(file.name)) return false
 
@@ -264,20 +351,10 @@ const ensureThumb = async (
     }
 
     const key = attachmentKey(todo.ID, file)
-    const url = `${base}/file?key=${encodeURIComponent(`thumb:${key}`)}`
-    const response = await net.fetch(url, {
-      headers: syncHeaders(),
-      timeoutMs: 10000,
-    })
-
-    if (response.status !== 200) return false
-
-    const parsed = JSON.parse(response.text) as unknown
-
-    if (!isRecord(parsed) || typeof parsed.data !== "string") return false
 
     await fs.mkdir(`${root}/${todo.ID}`)
-    await fs.writeFile(local, parsed.data, "base64")
+
+    if (!(await receiveFile(base, `thumb:${key}`, local, binary))) return false
 
     file.thumb = local
 
@@ -290,6 +367,7 @@ const ensureThumb = async (
 const uploadFiles = async (
   base: string,
   serverFiles: string[],
+  binary: boolean,
 ): Promise<boolean> => {
   const known = new Set(serverFiles)
   const root = await attachmentRoot()
@@ -307,21 +385,11 @@ const uploadFiles = async (
 
       if (!known.has(key)) {
         try {
-          if (await fs.exists(file.path)) {
-            const data = await fs.readFile(file.path, "base64")
-            const url = `${base}/file?key=${encodeURIComponent(key)}`
-
-            await net.fetch(url, {
-              method: "PUT",
-              headers: syncHeaders(),
-              body: JSON.stringify({ data }),
-              timeoutMs: 10000,
-            })
-          }
+          if (await fs.exists(file.path)) await sendFile(base, key, file.path, binary)
         } catch {}
       }
 
-      if (await ensureThumb(base, root, todo, file)) changed = true
+      if (await ensureThumb(base, root, todo, file, binary)) changed = true
     }
   }
 
@@ -331,6 +399,7 @@ const uploadFiles = async (
 const downloadFiles = async (
   base: string,
   serverFiles: string[],
+  binary: boolean,
 ): Promise<boolean> => {
   const known = new Set(serverFiles)
   const root = await attachmentRoot()
@@ -353,29 +422,19 @@ const downloadFiles = async (
       ) {
         try {
           const destination = `${root}/${todo.ID}/${baseName(file.path)}`
-          const url = `${base}/file?key=${encodeURIComponent(key)}`
-          const response = await net.fetch(url, {
-            headers: syncHeaders(),
-            timeoutMs: 10000,
-          })
 
-          if (response.status === 200) {
-            const parsed = JSON.parse(response.text) as unknown
+          await fs.mkdir(`${root}/${todo.ID}`)
 
-            if (isRecord(parsed) && typeof parsed.data === "string") {
-              await fs.mkdir(`${root}/${todo.ID}`)
-              await fs.writeFile(destination, parsed.data, "base64")
+          if (await receiveFile(base, key, destination, binary)) {
+            file.path = destination
 
-              file.path = destination
+            try {
+              const info = await fs.stat(destination)
 
-              try {
-                const info = await fs.stat(destination)
+              file.size = info.size
+            } catch {}
 
-                file.size = info.size
-              } catch {}
-
-              changed = true
-            }
+            changed = true
           }
         } catch (error) {
           if (error instanceof NetError && error.code === "ERR_TOO_LARGE")
@@ -383,7 +442,7 @@ const downloadFiles = async (
         }
       }
 
-      if (known.has(key) && (await ensureThumb(base, root, todo, file)))
+      if (known.has(key) && (await ensureThumb(base, root, todo, file, binary)))
         changed = true
     }
   }
@@ -432,7 +491,8 @@ const pushOnce = async (base: string): Promise<boolean> => {
 
     if (remote) applyRemote(remote)
 
-    if (await uploadFiles(base, remote?.files ?? [])) publishFileChanges()
+    if (await uploadFiles(base, remote?.files ?? [], remote?.binaryFiles === true))
+      publishFileChanges()
 
     state.sync.dirty = revision !== started
     persistState()
@@ -501,7 +561,7 @@ export const pull = async (): Promise<void> => {
     if (!remote) return
 
     const applied = applyRemote(remote)
-    const downloaded = await downloadFiles(base, remote.files)
+    const downloaded = await downloadFiles(base, remote.files, remote.binaryFiles)
 
     if (downloaded) publishFileChanges()
     if (applied || downloaded) persistState()

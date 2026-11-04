@@ -13,6 +13,7 @@ import {
   component,
   type ColorValue,
 } from "pulsar"
+import { deleteTag } from "../actions.ts"
 import { isAndroid } from "../platform.ts"
 import { state, ui } from "../state.ts"
 import { borderColor, textColor } from "../theme.ts"
@@ -47,6 +48,7 @@ export const TagSheet = component(() => {
               tag,
               selected: current.includes(tag.ID),
               onClick: () => toggleDraftTag(tag.ID),
+              onRemove: () => void deleteTag({ ID: tag.ID }),
             }),
           ),
         )

@@ -55,6 +55,7 @@ export type SyncSettings = {
 }
 
 export type RemoteState = {
+  binaryFiles: boolean
   todos: Todo[]
   tags: Tag[]
   folders: Folder[]
