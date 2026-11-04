@@ -310,7 +310,7 @@ const MainPage = () => {
           )
         : null,
       Column(
-        { gap: 8, fillWidth: true },
+        { gap: 8, fillWidth: true, visible: todos.length > 0 },
         ...state.todos.map((todo) =>
           TaskRow({ todo, visible: matchesTodo(todo) }),
         ),
