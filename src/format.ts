@@ -60,6 +60,9 @@ export const formatDates = (todo: Todo): string => {
     return `с ${formatDateValue(todo.startAT, todo.startAllDay)} до ${formatDateValue(todo.endAT, todo.endAllDay)}`
   }
 
+  if (todo.endAT !== null && todo.endAllDay && todo.startAT === null)
+    return formatDateValue(todo.endAT, true)
+
   if (todo.endAT !== null)
     return `до ${formatDateValue(todo.endAT, todo.endAllDay)}`
   if (todo.startAT !== null)

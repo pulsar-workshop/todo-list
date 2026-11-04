@@ -37,6 +37,18 @@ export const openEditor = (todo: Todo): void => {
     "draftCompleted",
     formatDateValue(draft.completedAT, draft.completedAllDay),
   )
+
+  const timed =
+    (draft.startAT !== null && !draft.startAllDay) ||
+    (draft.endAT !== null && !draft.endAllDay)
+  const hasRange = draft.startAT !== null && draft.endAT !== null
+  const mode = timed || hasRange ? "range" : "allDay"
+
+  setUI("draftDateMode", mode)
+
+  if (mode === "allDay" && draft.startAT !== null && draft.endAT === null)
+    setUI("draftEnd", formatDateValue(draft.startAT, draft.startAllDay))
+
   setUI("tagName", "")
   setUI("tagColor", TAG_PALETTE[3]!)
   setUI("subtaskText", "")
@@ -140,7 +152,7 @@ export const clearTodoFilters = (): void => {
   setUI("filterTags", [])
 }
 
-export const openCalendar = (target: string): void => {
+export const openCalendar = (target: string, withTime = true): void => {
   const value = uiValue(target, "")
   const parts = dateParts(value)
   const time = /(\d{1,2}):(\d{1,2}):(\d{1,2})/.exec(value)
@@ -149,9 +161,19 @@ export const openCalendar = (target: string): void => {
   setUI("calendarTarget", target)
   setUI("calendarYear", parts?.year ?? now.getFullYear())
   setUI("calendarMonth", parts ? parts.month - 1 : now.getMonth())
-  setUI("calendarHour", time ? String(Number(time[1])).padStart(2, "0") : "")
-  setUI("calendarMinute", time ? String(Number(time[2])).padStart(2, "0") : "")
-  setUI("calendarSecond", time ? String(Number(time[3])).padStart(2, "0") : "")
+  setUI("calendarWithTime", withTime)
+  setUI(
+    "calendarHour",
+    withTime && time ? String(Number(time[1])).padStart(2, "0") : "",
+  )
+  setUI(
+    "calendarMinute",
+    withTime && time ? String(Number(time[2])).padStart(2, "0") : "",
+  )
+  setUI(
+    "calendarSecond",
+    withTime && time ? String(Number(time[3])).padStart(2, "0") : "",
+  )
   setUI("calendarOpen", true)
 }
 
@@ -166,6 +188,23 @@ export const shiftCalendar = (delta: number): void => {
 
   setUI("calendarYear", next.getFullYear())
   setUI("calendarMonth", next.getMonth())
+}
+
+export const shiftCalendarYear = (delta: number): void => {
+  const year = uiValue("calendarYear", new Date().getFullYear())
+
+  setUI("calendarYear", year + delta)
+}
+
+export const setDraftDateMode = (mode: "allDay" | "range"): void => {
+  setUI("draftDateMode", mode)
+
+  if (mode !== "allDay") return
+
+  const start = uiValue("draftStart", "")
+  const end = uiValue("draftEnd", "")
+
+  if (!end && start) setUI("draftEnd", start)
 }
 
 export const pickCalendarDay = (day: number): void => {
@@ -212,8 +251,13 @@ export const saveDraft = (): void => {
 
   if (!draft) return
 
-  const startAT = parseTime(uiValue("draftStart", ""))
-  const endAT = parseTime(uiValue("draftEnd", ""))
+  const mode = uiValue<"allDay" | "range">("draftDateMode", "allDay")
+  const startText = uiValue("draftStart", "")
+  const endText = uiValue("draftEnd", "")
+  const dayText = endText.trim() ? endText : startText
+
+  const startAT = mode === "allDay" ? null : parseTime(startText)
+  const endAT = parseTime(mode === "allDay" ? dayText : endText)
   const createdAT = parseTime(uiValue("draftCreated", ""))
   const completedAT = parseTime(uiValue("draftCompleted", ""))
 
@@ -242,8 +286,8 @@ export const saveDraft = (): void => {
     text,
     startAT,
     endAT,
-    startAllDay: isDateOnly(uiValue("draftStart", "")),
-    endAllDay: isDateOnly(uiValue("draftEnd", "")),
+    startAllDay: mode === "range" && isDateOnly(startText),
+    endAllDay: mode === "allDay" ? endAT !== null : isDateOnly(endText),
     completedAT,
     completedAllDay: isDateOnly(uiValue("draftCompleted", "")),
   }

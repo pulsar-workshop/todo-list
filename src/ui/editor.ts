@@ -9,6 +9,7 @@ import {
   Input,
   Page,
   Row,
+  Segmented,
   Select,
   Spacer,
   Stack,
@@ -41,6 +42,7 @@ import {
   removeDraftFile,
   removeDraftSubtask,
   saveDraft,
+  setDraftDateMode,
   updateDraft,
   updateDraftSubtask,
 } from "./state.ts"
@@ -184,7 +186,7 @@ const footer = () =>
     }),
   )
 
-const dateInput = (key: string) =>
+const dateInput = (key: string, withTime = true) =>
   Row(
     { gap: 4, fillWidth: true, align: "center" },
     Input({
@@ -192,21 +194,21 @@ const dateInput = (key: string) =>
       variant: "outline",
       textColor: textColor(false),
       readOnly: true,
-      placeholder: "ДД.ММ.ГГГГ",
+      placeholder: withTime ? "ДД.ММ.ГГГГ ЧЧ:ММ:СС" : "ДД.ММ.ГГГГ",
       expand: true,
     }),
     IconButton({
       icon: "calendar_month",
       tooltip: "Выбрать дату",
-      onClick: () => openCalendar(key),
+      onClick: () => openCalendar(key, withTime),
     }),
   )
 
-const dateField = (label: string, key: string) =>
+const dateField = (label: string, key: string, withTime = true) =>
   Column(
     { gap: 4, expand: true },
     Text({ text: label, size: 11, color: textColor(true) }),
-    dateInput(key),
+    dateInput(key, withTime),
   )
 
 export const EditorPage = () => {
@@ -214,6 +216,22 @@ export const EditorPage = () => {
   const draft = getDraft()
   const editorError = uiValue("editorError", "")
   const currentTags = draft?.tags ?? []
+  const dateMode = uiValue<"allDay" | "range">("draftDateMode", "allDay")
+  const isAllDay = dateMode === "allDay"
+  const rangeFields = compact
+    ? Column(
+        { gap: 8, fillWidth: true },
+        dateField("С", "draftStart"),
+        dateField("До (дедлайн)", "draftEnd"),
+      )
+    : Row(
+        { gap: 8, fillWidth: true, align: "start" },
+        dateField("С", "draftStart"),
+        dateField("До (дедлайн)", "draftEnd"),
+      )
+  const dateFields = isAllDay
+    ? dateField("Дата", "draftEnd", false)
+    : rangeFields
 
   return Box(
     { key: "editor", fill: true, color: backgroundColor() },
@@ -247,17 +265,14 @@ export const EditorPage = () => {
         size: 11,
         color: textColor(true),
       }),
-      compact
-        ? Column(
-            { gap: 8, fillWidth: true },
-            dateField("С", "draftStart"),
-            dateField("До (дедлайн)", "draftEnd"),
-          )
-        : Row(
-            { gap: 8, fillWidth: true, align: "start" },
-            dateField("С", "draftStart"),
-            dateField("До (дедлайн)", "draftEnd"),
-          ),
+      Segmented({
+        items: ["Весь день", "С и до"],
+        value: isAllDay ? 0 : 1,
+        fillWidth: true,
+        onChange: (index) =>
+          setDraftDateMode(index === 0 ? "allDay" : "range"),
+      }),
+      dateFields,
       Row(
         { gap: 8, fillWidth: true, align: "center" },
         Text({ text: "Создано", size: 12, color: textColor(true), width: 76 }),
