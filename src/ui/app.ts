@@ -101,9 +101,11 @@ const MainPage = () => {
   const query = uiValue("todoQuery", "").trim().toLowerCase()
   const filterIDs = uiValue<string[]>("filterTags", [])
   const storedFolder = uiValue<string>("folderFilter", "")
-  const folderFilter = state.folders.some((folder) => folder.ID === storedFolder)
-    ? storedFolder
-    : ""
+  const folderFilter =
+    storedFolder === "none" ||
+    state.folders.some((folder) => folder.ID === storedFolder)
+      ? storedFolder
+      : ""
   const folderCreating = uiValue("folderCreating", false)
   const usedTags = state.tags.filter((tag) =>
     state.todos.some((todo) => todo.tags.includes(tag.ID)),
