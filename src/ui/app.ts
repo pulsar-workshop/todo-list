@@ -10,6 +10,7 @@ import {
   Row,
   SearchField,
   Spacer,
+  Stack,
   Text,
   When,
   Wrap,
@@ -336,9 +337,19 @@ const MainPage = () => {
 }
 
 export const renderApp = () => {
-  if (uiValue("editorOpen", false)) return EditorPage()
-  if (uiValue("syncOpen", false)) return SyncPage()
-  if (uiValue("viewerPath", "")) return ViewerPage()
+  const editorOpen = uiValue("editorOpen", false)
+  const syncOpen = uiValue("syncOpen", false)
+  const viewerPath = uiValue("viewerPath", "")
+  const coversList = editorOpen || syncOpen || viewerPath !== ""
 
-  return MainPage()
+  return Stack(
+    { key: "root", fill: true },
+    Box(
+      { key: "list", fill: true, visible: !coversList },
+      MainPage(),
+    ),
+    syncOpen ? SyncPage() : null,
+    editorOpen ? EditorPage() : null,
+    viewerPath ? ViewerPage() : null,
+  )
 }
