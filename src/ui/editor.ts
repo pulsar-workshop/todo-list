@@ -9,6 +9,7 @@ import {
   Input,
   Page,
   Row,
+  Select,
   Spacer,
   Stack,
   Text,
@@ -258,6 +259,20 @@ export const EditorPage = () => {
       editorError
         ? Text({ text: editorError, size: 12, color: "#ef4444" })
         : null,
+      Divider(),
+      section("ПАПКА"),
+      Select({
+        options: [
+          { value: "", label: "Без папки" },
+          ...state.folders.map((folder) => ({
+            value: folder.ID,
+            label: folder.name,
+          })),
+        ],
+        value: draft?.folderID ?? "",
+        fillWidth: true,
+        onChange: (value) => updateDraft({ folderID: String(value) || null }),
+      }),
       Divider(),
       section("ТЕГИ"),
       Wrap(

@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Card,
+  Chip,
   Column,
   EmptyState,
   Input,
@@ -13,7 +14,7 @@ import {
   When,
   Wrap,
 } from "pulsar"
-import { addTodo } from "../actions.ts"
+import { addTodo, deleteFolder } from "../actions.ts"
 import { setUI, syncColor, syncLabel, uiValue, app, state } from "../state.ts"
 import { syncNow } from "../sync.ts"
 import {
@@ -27,6 +28,7 @@ import {
 import { EditorPage } from "./editor.ts"
 import {
   clearTodoFilters,
+  createFolder,
   focusNewTask,
   openSync,
   toggleFilterTag,
@@ -41,7 +43,10 @@ const submitNewTask = (): void => {
 
   if (!text) return
 
-  addTodo({ text })
+  const filter = uiValue<string>("folderFilter", "")
+  const folderID = filter && filter !== "none" ? filter : null
+
+  addTodo({ text, folderID })
   setUI("newTaskText", "")
 }
 
@@ -95,10 +100,18 @@ const HeaderRow = () => {
 const MainPage = () => {
   const query = uiValue("todoQuery", "").trim().toLowerCase()
   const filterIDs = uiValue<string[]>("filterTags", [])
+  const storedFolder = uiValue<string>("folderFilter", "")
+  const folderFilter = state.folders.some((folder) => folder.ID === storedFolder)
+    ? storedFolder
+    : ""
+  const folderCreating = uiValue("folderCreating", false)
   const usedTags = state.tags.filter((tag) =>
     state.todos.some((todo) => todo.tags.includes(tag.ID)),
   )
   const todos = state.todos.filter((todo) => {
+    if (folderFilter === "none" && todo.folderID) return false
+    if (folderFilter && folderFilter !== "none" && todo.folderID !== folderFilter)
+      return false
     if (filterIDs.length > 0 && !todo.tags.some((ID) => filterIDs.includes(ID)))
       return false
 
@@ -106,13 +119,73 @@ const MainPage = () => {
 
     return `${todo.text}\n${todo.description}`.toLowerCase().includes(query)
   })
-  const filtering = query.length > 0 || filterIDs.length > 0
+  const filtering = query.length > 0 || filterIDs.length > 0 || folderFilter !== ""
   const focus = uiValue("newTaskFocus", false)
 
   return Box(
     { key: "main", fill: true, color: backgroundColor() },
     Page(
       { padding: 20, gap: 14, header: HeaderRow() },
+      Wrap(
+        { gap: 6, fillWidth: true },
+        Chip(
+          {
+            variant: "outline",
+            color: folderFilter === "" ? textColor(false) : textColor(true),
+            selected: folderFilter === "",
+            selectedColor: textColor(false),
+            onClick: () => setUI("folderFilter", ""),
+          },
+          "Все",
+        ),
+        Chip(
+          {
+            variant: "outline",
+            color: folderFilter === "none" ? textColor(false) : textColor(true),
+            selected: folderFilter === "none",
+            selectedColor: textColor(false),
+            onClick: () => setUI("folderFilter", "none"),
+          },
+          "Без папки",
+        ),
+        ...state.folders.map((folder) =>
+          Chip(
+            {
+              variant: "outline",
+              color: folderFilter === folder.ID ? textColor(false) : textColor(true),
+              selected: folderFilter === folder.ID,
+              selectedColor: textColor(false),
+              tooltip: "Удерживайте, чтобы удалить папку",
+              onClick: () => setUI("folderFilter", folder.ID),
+              onLongPress: () => void deleteFolder({ ID: folder.ID }),
+            },
+            folder.name,
+          ),
+        ),
+        Button({
+          variant: "ghost",
+          icon: "create_new_folder",
+          size: "sm",
+          tooltip: "Новая папка",
+          onClick: () => setUI("folderCreating", !folderCreating),
+        }),
+      ),
+      folderCreating
+        ? Row(
+            { gap: 8, fillWidth: true, align: "center" },
+            Input({
+              value: uiValue("folderName", ""),
+              placeholder: "Название папки",
+              variant: "outline",
+              textColor: textColor(false),
+              expand: true,
+              autoFocus: true,
+              onInput: (value) => setUI("folderName", value),
+              onSubmitted: createFolder,
+            }),
+            Button({ onClick: createFolder }, "Создать"),
+          )
+        : null,
       Card(
         {
           padding: 8,

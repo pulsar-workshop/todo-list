@@ -1,5 +1,6 @@
 import { clipboard, dialog, share } from "pulsar"
 import {
+  addFolder,
   addTag,
   deleteTodo,
   openPath,
@@ -59,6 +60,19 @@ const dateParts = (value: string): { day: number; month: number; year: number } 
     month: Number(match[2]),
     year: Number(match[3]),
   }
+}
+
+export const createFolder = (): void => {
+  const name = uiValue("folderName", "").trim()
+
+  if (!name) return
+
+  const folder = addFolder({ name })
+
+  setUI("folderName", "")
+  setUI("folderCreating", false)
+
+  if (folder) setUI("folderFilter", folder.ID)
 }
 
 export const toggleFilterTag = (ID: string): void => {

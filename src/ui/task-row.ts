@@ -12,7 +12,7 @@ import {
 } from "pulsar"
 import { toggleTodo } from "../actions.ts"
 import { formatDateValue, formatDates, subtaskLabel } from "../format.ts"
-import { tagByID } from "../state.ts"
+import { state, tagByID } from "../state.ts"
 import {
   borderColor,
   hoverSurfaceColor,
@@ -23,9 +23,14 @@ import type { Tag, Todo } from "../types.ts"
 import { openEditor } from "./state.ts"
 
 const metaLine = (todo: Todo): string => {
+  const folder = todo.folderID
+    ? state.folders.find((item) => item.ID === todo.folderID)
+    : null
   const parts = [
     `Создано: ${formatDateValue(todo.createdAT, todo.createdAllDay)}`,
   ]
+
+  if (folder) parts.unshift(folder.name)
 
   if (todo.completedAT !== null)
     parts.push(
