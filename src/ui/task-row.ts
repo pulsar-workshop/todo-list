@@ -44,7 +44,10 @@ const metaLine = (todo: Todo): string => {
   return parts.join(" · ")
 }
 
-export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
+export const TaskRow = defineComponent<{
+  todo: Todo
+  visible?: boolean
+}>(({ todo, visible = true }) => {
   const tags = todo.tags
     .map((ID) => tagByID(ID))
     .filter((tag): tag is Tag => tag !== null)
@@ -59,6 +62,8 @@ export const TaskRow = defineComponent<{ todo: Todo }>(({ todo }) => {
 
   return Card(
     {
+      key: todo.ID,
+      visible,
       padding: 12,
       radius: 10,
       elevation: 0,

@@ -45,6 +45,7 @@ import { SyncPage } from "./sync-dialog.ts"
 import { TagChip } from "./tag-chip.ts"
 import { TagFilterSheet } from "./tag-filter-sheet.ts"
 import { TaskRow } from "./task-row.ts"
+import type { Todo } from "../types.ts"
 import { ViewerPage } from "./viewer.ts"
 
 const submitNewTask = (): void => {
@@ -155,7 +156,7 @@ const MainPage = () => {
       : ""
   const folderCreating = uiValue("folderCreating", false)
   const selectedTags = state.tags.filter((tag) => filterIDs.includes(tag.ID))
-  const todos = state.todos.filter((todo) => {
+  const matchesTodo = (todo: Todo): boolean => {
     if (folderFilter === "none" && todo.folderID) return false
     if (folderFilter && folderFilter !== "none" && todo.folderID !== folderFilter)
       return false
@@ -165,7 +166,9 @@ const MainPage = () => {
     if (!query) return true
 
     return `${todo.text}\n${todo.description}`.toLowerCase().includes(query)
-  })
+  }
+
+  const todos = state.todos.filter(matchesTodo)
   const filtering = query.length > 0 || filterIDs.length > 0 || folderFilter !== ""
   const focus = uiValue("newTaskFocus", false)
 
@@ -306,6 +309,12 @@ const MainPage = () => {
             ),
           )
         : null,
+      Column(
+        { gap: 8, fillWidth: true },
+        ...state.todos.map((todo) =>
+          TaskRow({ todo, visible: matchesTodo(todo) }),
+        ),
+      ),
       When({
         test: todos.length === 0,
         then: () =>
@@ -332,11 +341,6 @@ const MainPage = () => {
                 }),
                 Button({ onClick: clearTodoFilters }, "Сбросить"),
               ),
-        else: () =>
-          Column(
-            { gap: 8, fillWidth: true },
-            ...todos.map((todo) => TaskRow({ todo })),
-          ),
       }),
       uiValue("tagFilterOpen", false) ? TagFilterSheet() : null,
     ),
