@@ -1,6 +1,6 @@
 import type { Attachment, Folder, Subtask, Tag, Todo } from "./types.ts"
 
-export const DEFAULT_PORT = "8787"
+export const DEFAULT_PORT = "8008"
 
 const VIDEO_PATTERN = /\.(mp4|m4v|mov|webm|mkv|avi|3gp)$/i
 const IMAGE_PATTERN = /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i

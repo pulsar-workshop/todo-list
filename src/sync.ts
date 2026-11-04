@@ -2,6 +2,7 @@ import { fs, net, paths } from "pulsar"
 import {
   attachmentKey,
   baseName,
+  DEFAULT_PORT,
   isRecord,
   isVideo,
   normalizeAttachments,
@@ -461,7 +462,7 @@ export const saveSyncConnection = async (params: {
   const port = typeof params?.port === "string" ? params.port.trim() : ""
   const password = typeof params?.password === "string" ? params.password : ""
 
-  const settings: SyncSettings = { host, port: port || "8787", password }
+  const settings: SyncSettings = { host, port: port || DEFAULT_PORT, password }
 
   await writeSyncSettings(settings)
 

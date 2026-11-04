@@ -1,4 +1,5 @@
 import { Box, Button, Column, Input, Page, Row, Spacer, Text } from "pulsar"
+import { DEFAULT_PORT } from "../model.ts"
 import { setUI, uiValue } from "../state.ts"
 import { backgroundColor, textColor } from "../theme.ts"
 import { closeSync, saveSyncForm } from "./state.ts"
@@ -44,7 +45,7 @@ export const SyncPage = () =>
           onInput: (value) => setUI("syncHostInput", value),
         }),
         Input({
-          value: uiValue("syncPortInput", "8787"),
+          value: uiValue("syncPortInput", DEFAULT_PORT),
           placeholder: "Порт",
           variant: "outline",
           textColor: textColor(false),

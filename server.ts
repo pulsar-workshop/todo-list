@@ -36,7 +36,7 @@ const loadEnv = (path: string): void => {
 loadEnv(join(baseDir, ".env"))
 loadEnv(join(process.cwd(), ".env"))
 
-const port = Number(process.env.PORT ?? 8787)
+const port = Number(process.env.PORT ?? 8008)
 const password = process.env.PASSWORD ?? ""
 const dbName = process.env.DB ?? "sync.db"
 const dbPath = isAbsolute(dbName) ? dbName : join(baseDir, dbName)

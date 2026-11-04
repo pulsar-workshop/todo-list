@@ -71,7 +71,7 @@ Android into `PULSAR_HOME` (about 4.5 GB, one time). The result is
 
 ## Sync between devices
 
-`bun run server` starts a small Bun server on port 8787 (override with `PORT`,
+`bun run server` starts a small Bun server on port 8008 (override with `PORT`,
 set `PASSWORD` to require a bearer token). It stores everything in `sync.db`
 (SQLite) next to the script:
 
@@ -120,7 +120,7 @@ device, a later edit on another device cannot resurrect it. Pending changes
 and tombstones survive an app restart. Leave the address empty to disable
 syncing.
 
-A phone next to the computer can use `adb reverse tcp:8787 tcp:8787` with the
+A phone next to the computer can use `adb reverse tcp:8008 tcp:8008` with the
 host `127.0.0.1`. For a VPS run the server there, open the port, and enter its
 IP or domain in the app.
 
@@ -142,7 +142,7 @@ The binary has no runtime dependencies and embeds the migrations. Put it in a
 directory together with a `.env` file (see `.env.example`):
 
 ```
-PORT=8787
+PORT=8008
 PASSWORD=change-me
 DB=sync.db
 ```
