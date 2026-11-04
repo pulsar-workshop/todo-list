@@ -93,8 +93,8 @@ export const TaskRow = defineComponent<{
       borderWidth: 1,
       opacity: todo.done ? 0.62 : 1,
       pressed: { scale: 0.98 },
-      enter: { opacity: 0, y: 10 },
-      exit: { opacity: 0, x: -48 },
+      enter: { opacity: 0 },
+      exit: { opacity: 0 },
       transition: { duration: 180 },
       drag: {
         axis: "x",
