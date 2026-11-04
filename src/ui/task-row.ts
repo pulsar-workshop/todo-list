@@ -92,6 +92,22 @@ export const TaskRow = defineComponent<{
       borderColor: borderColor(),
       borderWidth: 1,
       opacity: todo.done ? 0.62 : 1,
+      pressed: { scale: 0.98 },
+      enter: { opacity: 0, y: 10 },
+      exit: { opacity: 0, x: -48 },
+      transition: { duration: 180 },
+      drag: {
+        axis: "x",
+        onRelease: ({ direction }) => {
+          if (direction === "right") {
+            toggleTodo({ ID: todo.ID })
+
+            return
+          }
+
+          openEditor(todo)
+        },
+      },
     },
     Row(
       { gap: 10, fillWidth: true },
