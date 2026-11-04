@@ -1,4 +1,4 @@
-import { App, createBreakpoints, type ColorValue } from "pulsar"
+import { App, createBreakpoints, createState, type ColorValue } from "pulsar"
 import { DEFAULT_PORT } from "./model.ts"
 import type { Folder, SyncSettings, Tag, Todo } from "./types.ts"
 
@@ -7,7 +7,7 @@ export const app = new App()
 export const breakpoints = createBreakpoints(app)
 
 
-export const state = {
+export const state = createState({
   sync: { dirty: false },
   syncSettings: { host: "", port: DEFAULT_PORT, password: "" } as SyncSettings,
   todos: [] as Todo[],
@@ -16,7 +16,7 @@ export const state = {
   deletedTodos: {} as Record<string, number>,
   deletedFolders: {} as Record<string, number>,
   deletedTags: {} as Record<string, number>,
-}
+})
 
 export const refresh = (): void => {
   app.store.set("todos", state.todos)
