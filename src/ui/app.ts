@@ -179,6 +179,7 @@ const MainPage = () => {
         padding: compact ? 14 : 20,
         gap: compact ? 10 : 14,
         header: HeaderRow(compact),
+        flick: false,
       },
       Wrap(
         { gap: 6, fillWidth: true },

@@ -155,7 +155,7 @@ checkpoints the WAL, so `DB` can be backed up on its own after it stops.
 
 ## Deployments
 
-Release `0.2.0` artifacts are built into `dist/`:
+Release `0.2.1` artifacts are built into `dist/`:
 
 | Target | Artifact | Notes |
 | --- | --- | --- |
