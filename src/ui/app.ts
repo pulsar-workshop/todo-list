@@ -293,9 +293,9 @@ const MainPage = () => {
         : null,
       Column(
         { gap: 8, fillWidth: true, visible: todos.length > 0 },
-        ...state.todos.map((todo) =>
-          TaskRow({ todo, visible: matchesTodo(todo) }),
-        ),
+        ...[...state.todos]
+          .sort((a, b) => b.createdAT - a.createdAT)
+          .map((todo) => TaskRow({ todo, visible: matchesTodo(todo) })),
       ),
       When({
         test: todos.length === 0,
