@@ -121,8 +121,9 @@ and tombstones survive an app restart. Leave the address empty to disable
 syncing.
 
 A phone next to the computer can use `adb reverse tcp:8008 tcp:8008` with the
-host `127.0.0.1`. For a VPS run the server there, open the port, and enter its
-IP or domain in the app.
+host `127.0.0.1`. For a VPS run the server there and enter its address in the
+app. Bearer tokens travel over plain HTTP, so expose the port only through a
+VPN or an HTTPS reverse proxy.
 
 Attachments are copied into the app data directory and uploaded to the server;
 another device downloads them into its own directory when it pulls the task.
@@ -151,6 +152,58 @@ Then run `./todo-sync`. `sync.db` and `.env` are read next to the executable;
 `PORT`, `PASSWORD`, `DB` can also come from the real environment. If `DB` is
 relative, it is resolved next to the binary. On `SIGINT`/`SIGTERM` the server
 checkpoints the WAL, so `DB` can be backed up on its own after it stops.
+
+## Deployments
+
+Release `0.2.0` artifacts are built into `dist/`:
+
+| Target | Artifact | Notes |
+| --- | --- | --- |
+| Android (sideload) | `todo-list.apk` | arm64-v8a, minSdk 28 |
+| Android (bundle) | `todo-list.aab` | for stores; this repo does not upload it |
+| Linux desktop | `todo-list` | one file with bundled Qt |
+| Sync server | `todo-sync-linux-x64`, `todo-sync-linux-arm64` | one file with embedded migrations |
+
+### Android
+
+```
+adb install -r dist/todo-list.apk
+```
+
+Open **Настройки** in the app and enter the server address, port and password.
+The APK is signed with `PULSAR_ANDROID_KEYSTORE` when set, otherwise with the
+debug key. No Play upload is performed.
+
+### Desktop
+
+```
+chmod +x dist/todo-list
+./dist/todo-list
+```
+
+The binary bundles Qt and renders through Qt Quick; on Linux it needs a working
+OpenGL driver (`QSG_INFO=1` prints the selected backend).
+
+### Sync server
+
+```
+sudo useradd --system --home /opt/todo-sync todo
+sudo install -d -o todo -g todo -m 750 /opt/todo-sync
+sudo install -o todo -g todo -m 755 dist/todo-sync-linux-x64 /opt/todo-sync/todo-sync
+sudo -u todo sh -c 'cat > /opt/todo-sync/.env' <<'ENV'
+PORT=8008
+PASSWORD=change-me
+DB=sync.db
+TRASH_DAYS=30
+ENV
+sudo cp deploy/todo-sync.service /etc/systemd/system/todo-sync.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now todo-sync.service
+```
+
+Update: `systemctl stop todo-sync`, replace `/opt/todo-sync/todo-sync`, start
+again. SQLite data stays in `sync.db`; migrations run on boot. Backups are
+covered below.
 
 ## Permissions
 

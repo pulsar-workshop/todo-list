@@ -1,0 +1,14 @@
+[Unit]
+Description=Todo List sync server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/todo-sync
+ExecStart=/opt/todo-sync/todo-sync
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
