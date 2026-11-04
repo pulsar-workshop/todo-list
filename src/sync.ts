@@ -5,6 +5,7 @@ import {
   isRecord,
   isVideo,
   normalizeAttachments,
+  parseFolder,
   parseTag,
   parseTodo,
   thumbPath,
@@ -14,6 +15,7 @@ import { refresh, state } from "./state.ts"
 import { setStatus } from "./sync-status.ts"
 import type {
   Attachment,
+  Folder,
   RemoteState,
   SyncSettings,
   Tag,
@@ -55,11 +57,19 @@ const parseState = (text: string): RemoteState | null => {
     tags: Array.isArray(parsed.tags)
       ? parsed.tags.map(parseTag).filter((tag): tag is Tag => tag !== null)
       : [],
+    folders: Array.isArray(parsed.folders)
+      ? parsed.folders
+          .map(parseFolder)
+          .filter((folder): folder is Folder => folder !== null)
+      : [],
     deletedTodos: Array.isArray(parsed.deletedTodos)
       ? parsed.deletedTodos.filter((ID): ID is string => typeof ID === "string")
       : [],
     deletedTags: Array.isArray(parsed.deletedTags)
       ? parsed.deletedTags.filter((ID): ID is string => typeof ID === "string")
+      : [],
+    deletedFolders: Array.isArray(parsed.deletedFolders)
+      ? parsed.deletedFolders.filter((ID): ID is string => typeof ID === "string")
       : [],
     files: Array.isArray(parsed.files)
       ? parsed.files.filter((key): key is string => typeof key === "string")
@@ -81,6 +91,13 @@ const applyRemote = (remote: RemoteState): boolean => {
     if (state.deletedTags[ID] !== undefined) continue
 
     state.deletedTags = { ...state.deletedTags, [ID]: Date.now() }
+    changed = true
+  }
+
+  for (const ID of remote.deletedFolders) {
+    if (state.deletedFolders[ID] !== undefined) continue
+
+    state.deletedFolders = { ...state.deletedFolders, [ID]: Date.now() }
     changed = true
   }
 
@@ -143,6 +160,47 @@ const applyRemote = (remote: RemoteState): boolean => {
   if (nextTags.length !== state.tags.length) changed = true
 
   state.tags = nextTags
+
+  const localFolders = new Map(state.folders.map((folder) => [folder.ID, folder]))
+
+  for (const folder of remote.folders) {
+    const tombstoneAt = state.deletedFolders[folder.ID]
+
+    if (tombstoneAt !== undefined) {
+      if (folder.updatedAT <= tombstoneAt) continue
+
+      const next = { ...state.deletedFolders }
+      delete next[folder.ID]
+      state.deletedFolders = next
+      changed = true
+    }
+
+    const local = localFolders.get(folder.ID)
+
+    if (!local || folder.updatedAT > local.updatedAT) {
+      localFolders.set(folder.ID, folder)
+      changed = true
+    }
+  }
+
+  const nextFolders = [...localFolders.values()].filter(
+    (folder) => !state.deletedFolders[folder.ID],
+  )
+
+  if (nextFolders.length !== state.folders.length) changed = true
+
+  state.folders = nextFolders
+
+  const folderIDs = new Set(state.folders.map((folder) => folder.ID))
+
+  if (state.todos.some((todo) => todo.folderID && !folderIDs.has(todo.folderID))) {
+    state.todos = state.todos.map((todo) => {
+      if (!todo.folderID || folderIDs.has(todo.folderID)) return todo
+
+      return { ...todo, folderID: null, updatedAT: Date.now() }
+    })
+    changed = true
+  }
 
   if (normalizeAttachments(state.todos)) changed = true
 
@@ -326,8 +384,10 @@ export const push = async (): Promise<void> => {
       body: JSON.stringify({
         todos: state.todos,
         tags: state.tags,
+        folders: state.folders,
         deletedTodos: state.deletedTodos,
         deletedTags: state.deletedTags,
+        deletedFolders: state.deletedFolders,
       }),
       timeoutMs: 5000,
     })

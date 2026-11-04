@@ -3,30 +3,36 @@ import {
   DEFAULT_PORT,
   normalizeAttachments,
   parseDeleted,
+  parseFolder,
   parseTag,
   parseTodo,
 } from "./model.ts"
 import { refresh, state } from "./state.ts"
 import { setStatus } from "./sync-status.ts"
-import type { SyncSettings, Tag, Todo } from "./types.ts"
+import type { Folder, SyncSettings, Tag, Todo } from "./types.ts"
 
 export const persistState = async (): Promise<void> => {
   await storage.set("todos", state.todos)
   await storage.set("tags", state.tags)
+  await storage.set("folders", state.folders)
   await storage.set("deletedTodos", state.deletedTodos)
   await storage.set("deletedTags", state.deletedTags)
+  await storage.set("deletedFolders", state.deletedFolders)
   await storage.set("syncDirty", state.sync.dirty)
 }
 
 export const restore = async (): Promise<void> => {
   const savedTodos = await storage.get("todos")
   const savedTags = await storage.get("tags")
+  const savedFolders = await storage.get("folders")
   const savedDeletedTodos = await storage.get("deletedTodos")
   const savedDeletedTags = await storage.get("deletedTags")
+  const savedDeletedFolders = await storage.get("deletedFolders")
   const savedDirty = await storage.get("syncDirty")
 
   state.deletedTodos = parseDeleted(savedDeletedTodos)
   state.deletedTags = parseDeleted(savedDeletedTags)
+  state.deletedFolders = parseDeleted(savedDeletedFolders)
   state.sync.dirty = savedDirty === true
 
   state.todos = (Array.isArray(savedTodos) ? savedTodos : [])
@@ -38,6 +44,11 @@ export const restore = async (): Promise<void> => {
     .map(parseTag)
     .filter((tag): tag is Tag => tag !== null)
     .filter((tag) => !state.deletedTags[tag.ID])
+
+  state.folders = (Array.isArray(savedFolders) ? savedFolders : [])
+    .map(parseFolder)
+    .filter((folder): folder is Folder => folder !== null)
+    .filter((folder) => !state.deletedFolders[folder.ID])
 
   normalizeAttachments(state.todos)
   refresh()

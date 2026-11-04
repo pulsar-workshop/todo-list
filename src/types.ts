@@ -30,6 +30,7 @@ export type Todo = {
   startAllDay: boolean
   endAllDay: boolean
   tags: string[]
+  folderID: string | null
   subtasks: Subtask[]
   files: Attachment[]
 }
@@ -38,6 +39,12 @@ export type Tag = {
   ID: string
   name: string
   color: string
+  updatedAT: number
+}
+
+export type Folder = {
+  ID: string
+  name: string
   updatedAT: number
 }
 
@@ -50,7 +57,9 @@ export type SyncSettings = {
 export type RemoteState = {
   todos: Todo[]
   tags: Tag[]
+  folders: Folder[]
   deletedTodos: string[]
   deletedTags: string[]
+  deletedFolders: string[]
   files: string[]
 }

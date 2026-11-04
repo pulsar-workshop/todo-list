@@ -1,4 +1,4 @@
-import type { Attachment, Subtask, Tag, Todo } from "./types.ts"
+import type { Attachment, Folder, Subtask, Tag, Todo } from "./types.ts"
 
 export const DEFAULT_PORT = "8787"
 
@@ -113,8 +113,22 @@ export const parseTodo = (value: unknown): Todo | null => {
     tags: Array.isArray(value.tags)
       ? value.tags.filter((tag): tag is string => typeof tag === "string")
       : [],
+    folderID: typeof value.folderID === "string" ? value.folderID : null,
     subtasks,
     files,
+  }
+}
+
+export const parseFolder = (value: unknown): Folder | null => {
+  if (!isRecord(value)) return null
+
+  if (typeof value.ID !== "string") return null
+  if (typeof value.name !== "string") return null
+
+  return {
+    ID: value.ID,
+    name: value.name,
+    updatedAT: asNumber(value.updatedAT) ?? Date.now(),
   }
 }
 

@@ -10,7 +10,7 @@ import {
 import { persistState } from "./storage.ts"
 import { deleteRemoteFile, push } from "./sync.ts"
 import { app, refresh, state } from "./state.ts"
-import type { Attachment, Tag, Todo } from "./types.ts"
+import type { Attachment, Folder, Tag, Todo } from "./types.ts"
 
 const save = (): void => {
   state.sync.dirty = true
@@ -18,8 +18,15 @@ const save = (): void => {
   void push()
 }
 
-export const addTodo = (params: { text?: unknown }): void => {
+export const addTodo = (params: {
+  text?: unknown
+  folderID?: unknown
+}): void => {
   const text = typeof params?.text === "string" ? params.text.trim() : ""
+  const folderID =
+    typeof params?.folderID === "string" && params.folderID
+      ? params.folderID
+      : null
 
   if (!text) return
 
@@ -40,6 +47,7 @@ export const addTodo = (params: { text?: unknown }): void => {
       startAllDay: false,
       endAllDay: false,
       tags: [],
+      folderID,
       subtasks: [],
       files: [],
     },
@@ -120,6 +128,67 @@ export const deleteTodo = async (params: { ID?: unknown }): Promise<void> => {
 
     await fs.remove(`${dirs.data}/attachments/${ID}`, true)
   } catch {}
+}
+
+export const addFolder = (params: { name?: unknown }): Folder | null => {
+  const name = typeof params?.name === "string" ? params.name.trim() : ""
+
+  if (!name) return null
+
+  const existing = state.folders.find(
+    (folder) => folder.name.toLowerCase() === name.toLowerCase(),
+  )
+
+  if (existing) return existing
+
+  const folder: Folder = { ID: newID(), name, updatedAT: Date.now() }
+
+  state.folders = [...state.folders, folder]
+
+  refresh()
+  save()
+
+  return folder
+}
+
+export const deleteFolder = async (params: { ID?: unknown }): Promise<void> => {
+  const ID = typeof params?.ID === "string" ? params.ID : ""
+  const folder = state.folders.find((item) => item.ID === ID)
+
+  if (!folder) return
+
+  const ok = await dialog.message({
+    title: "Удалить папку?",
+    text: `Задачи из «${folder.name}» останутся без папки.`,
+  })
+
+  if (!ok) return
+
+  const now = Date.now()
+
+  state.deletedFolders = { ...state.deletedFolders, [ID]: now }
+  state.folders = state.folders.filter((item) => item.ID !== ID)
+  state.todos = state.todos.map((todo) => {
+    if (todo.folderID !== ID) return todo
+
+    return { ...todo, folderID: null, updatedAT: now }
+  })
+
+  const draft = app.store.get("draft")
+
+  if (draft && typeof draft === "object") {
+    const record = draft as Todo
+
+    if (record.folderID === ID)
+      app.store.set("draft", { ...record, folderID: null })
+  }
+
+  const filter = app.store.get("folderFilter")
+
+  if (filter === ID) app.store.set("folderFilter", "")
+
+  refresh()
+  save()
 }
 
 export const addTag = (params: {

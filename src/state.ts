@@ -1,6 +1,6 @@
 import { App, type ColorValue } from "pulsar"
 import { DEFAULT_PORT } from "./model.ts"
-import type { SyncSettings, Tag, Todo } from "./types.ts"
+import type { Folder, SyncSettings, Tag, Todo } from "./types.ts"
 
 export const app = new App()
 
@@ -9,13 +9,16 @@ export const state = {
   syncSettings: { host: "", port: DEFAULT_PORT, password: "" } as SyncSettings,
   todos: [] as Todo[],
   tags: [] as Tag[],
+  folders: [] as Folder[],
   deletedTodos: {} as Record<string, number>,
+  deletedFolders: {} as Record<string, number>,
   deletedTags: {} as Record<string, number>,
 }
 
 export const refresh = (): void => {
   app.store.set("todos", state.todos)
   app.store.set("tags", state.tags)
+  app.store.set("folders", state.folders)
   app.store.set("activeCount", state.todos.filter((todo) => !todo.done).length)
 }
 

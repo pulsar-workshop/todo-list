@@ -7,5 +7,12 @@
     ],
     "folderMillis": 1792957342868,
     "hash": "92bca2465ab187b767614dacfc00c87becc0a28d65676becbfcaaaeddcb99eba"
+  },
+  {
+    "sql": [
+      "CREATE TABLE `folders` (\n\t`ID` text PRIMARY KEY NOT NULL,\n\t`data` text NOT NULL,\n\t`updatedAT` integer NOT NULL,\n\t`deleted` integer DEFAULT 0 NOT NULL\n);"
+    ],
+    "folderMillis": 1793760970860,
+    "hash": "eba541a2059468a0990aff5ce6571174067624ff103a970dd57470afec268823"
   }
 ]

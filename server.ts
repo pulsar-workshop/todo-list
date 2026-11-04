@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs
 import { tmpdir } from "os"
 import { dirname, isAbsolute, join } from "path"
 import { migrate } from "./db/migrate.ts"
-import { files, tags, todos } from "./db/schema.ts"
+import { files, folders, tags, todos } from "./db/schema.ts"
 
 const THUMB_PREFIX = "thumb:"
 const VIDEO_PATTERN = /\.(mp4|m4v|mov|webm|mkv|avi|3gp)$/i
@@ -50,8 +50,10 @@ const trashDays = (): number => {
 type State = {
   todos: unknown[]
   tags: unknown[]
+  folders: unknown[]
   deletedTodos: string[]
   deletedTags: string[]
+  deletedFolders: string[]
   files: string[]
 }
 
@@ -159,6 +161,11 @@ const purgeTrash = (): void => {
     .set({ data: "{}" })
     .where(and(eq(tags.deleted, 1), lt(tags.updatedAT, cutoff), ne(tags.data, "{}")))
     .run()
+
+  db.update(folders)
+    .set({ data: "{}" })
+    .where(and(eq(folders.deleted, 1), lt(folders.updatedAT, cutoff), ne(folders.data, "{}")))
+    .run()
 }
 
 purgeTrash()
@@ -177,11 +184,18 @@ const state = (): State => {
     .where(eq(tags.deleted, 0))
     .orderBy(sql`rowid`)
     .all()
+  const folderRows = db
+    .select({ data: folders.data })
+    .from(folders)
+    .where(eq(folders.deleted, 0))
+    .orderBy(sql`rowid`)
+    .all()
   const fileRows = db.select({ key: files.key }).from(files).orderBy(files.key).all()
 
   return {
     todos: todoRows.map((row) => JSON.parse(row.data) as unknown),
     tags: tagRows.map((row) => JSON.parse(row.data) as unknown),
+    folders: folderRows.map((row) => JSON.parse(row.data) as unknown),
     deletedTodos: db
       .select({ ID: todos.ID })
       .from(todos)
@@ -192,6 +206,12 @@ const state = (): State => {
       .select({ ID: tags.ID })
       .from(tags)
       .where(eq(tags.deleted, 1))
+      .all()
+      .map((row) => row.ID),
+    deletedFolders: db
+      .select({ ID: folders.ID })
+      .from(folders)
+      .where(eq(folders.deleted, 1))
       .all()
       .map((row) => row.ID),
     files: fileRows.map((row) => row.key).filter((key) => !key.startsWith(THUMB_PREFIX)),
@@ -230,8 +250,10 @@ const server = Bun.serve({
 
     const incomingTodos = body.todos
     const incomingTags = Array.isArray(body.tags) ? body.tags : []
+    const incomingFolders = Array.isArray(body.folders) ? body.folders : []
     const deletedTodos = parseDeletions(body.deletedTodos)
     const deletedTags = parseDeletions(body.deletedTags)
+    const deletedFolders = parseDeletions(body.deletedFolders)
 
     db.transaction((tx) => {
       for (const { ID, at } of deletedTodos) {
@@ -268,6 +290,24 @@ const server = Bun.serve({
         }
 
         tx.insert(tags).values({ ID, data: "{}", updatedAT: Date.now(), deleted: 1 }).run()
+      }
+
+      for (const { ID, at } of deletedFolders) {
+        const existing = tx
+          .select({ deleted: folders.deleted, updatedAT: folders.updatedAT })
+          .from(folders)
+          .where(eq(folders.ID, ID))
+          .get()
+
+        if (existing?.deleted) continue
+        if (existing && existing.updatedAT > at) continue
+
+        if (existing) {
+          tx.update(folders).set({ deleted: 1, updatedAT: Date.now() }).where(eq(folders.ID, ID)).run()
+          continue
+        }
+
+        tx.insert(folders).values({ ID, data: "{}", updatedAT: Date.now(), deleted: 1 }).run()
       }
 
       for (const value of incomingTodos) {
@@ -322,6 +362,34 @@ const server = Bun.serve({
           tx.update(tags)
             .set({ data: JSON.stringify(value), updatedAT })
             .where(eq(tags.ID, ID))
+            .run()
+        }
+      }
+
+      for (const value of incomingFolders) {
+        if (!isRecord(value) || typeof value.ID !== "string") continue
+
+        const ID = value.ID
+        const updatedAT = asUpdated(value.updatedAT)
+        const existing = tx
+          .select({ deleted: folders.deleted, updatedAT: folders.updatedAT })
+          .from(folders)
+          .where(eq(folders.ID, ID))
+          .get()
+
+        if (existing?.deleted) continue
+
+        if (!existing) {
+          tx.insert(folders)
+            .values({ ID, data: JSON.stringify(value), updatedAT, deleted: 0 })
+            .run()
+          continue
+        }
+
+        if (updatedAT > existing.updatedAT) {
+          tx.update(folders)
+            .set({ data: JSON.stringify(value), updatedAT })
+            .where(eq(folders.ID, ID))
             .run()
         }
       }
