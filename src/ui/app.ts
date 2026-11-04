@@ -42,10 +42,8 @@ import {
   openFolders,
   openSync,
   openTagFilter,
-  toggleFilterTag,
 } from "./state.ts"
 import { SyncPage } from "./sync-dialog.ts"
-import { TagChip } from "./tag-chip.ts"
 import { TagFilterSheet } from "./tag-filter-sheet.ts"
 import { TaskRow } from "./task-row.ts"
 import type { Todo } from "../types.ts"
@@ -157,7 +155,6 @@ const MainPage = () => {
     state.folders.some((folder) => folder.ID === storedFolder)
       ? storedFolder
       : ""
-  const selectedTags = state.tags.filter((tag) => filterIDs.includes(tag.ID))
   const matchesTodo = (todo: Todo): boolean => {
     if (folderFilter === "none" && todo.folderID) return false
     if (folderFilter && folderFilter !== "none" && todo.folderID !== folderFilter)
@@ -267,7 +264,7 @@ const MainPage = () => {
               },
               "Сбросить",
             )
-          : null,
+          : Box({ width: 84 }),
       ),
       state.tags.length > 0
         ? Row(
@@ -279,18 +276,6 @@ const MainPage = () => {
                 onClick: openTagFilter,
               },
               filterIDs.length > 0 ? `Теги · ${filterIDs.length}` : "Теги",
-            ),
-          )
-        : null,
-      filterIDs.length > 0
-        ? Wrap(
-            { gap: 6, fillWidth: true },
-            ...selectedTags.map((tag) =>
-              TagChip({
-                tag,
-                selected: true,
-                onClick: () => toggleFilterTag(tag.ID),
-              }),
             ),
           )
         : null,
@@ -332,8 +317,8 @@ const MainPage = () => {
                 }),
               ),
       }),
-      uiValue("tagFilterOpen", false) ? TagFilterSheet() : null,
-      uiValue("foldersOpen", false) ? FolderSheet() : null,
+      TagFilterSheet(uiValue("tagFilterOpen", false)),
+      FolderSheet(uiValue("foldersOpen", false)),
     ),
   )
 }

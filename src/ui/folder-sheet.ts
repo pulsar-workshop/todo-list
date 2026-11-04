@@ -19,12 +19,12 @@ import {
   startRenameFolder,
 } from "./state.ts"
 
-export const FolderSheet = () => {
+export const FolderSheet = (open: boolean) => {
   const renameID = uiValue("folderRenameID", "")
 
   return Sheet(
     {
-      open: true,
+      open,
       title: "Папки",
       onClose: closeFolders,
     },

@@ -7,13 +7,13 @@ import {
   toggleFilterTag,
 } from "./state.ts"
 
-export const TagFilterSheet = () => {
+export const TagFilterSheet = (open: boolean) => {
   const filterIDs = uiValue<string[]>("filterTags", [])
   const tags = state.tags
 
   return Sheet(
     {
-      open: true,
+      open,
       title: "Фильтр по тегам",
       onClose: closeTagFilter,
     },
