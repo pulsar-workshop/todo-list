@@ -151,6 +151,31 @@ export const addFolder = (params: { name?: unknown }): Folder | null => {
   return folder
 }
 
+export const renameFolder = (params: {
+  ID?: unknown
+  name?: unknown
+}): void => {
+  const ID = typeof params?.ID === "string" ? params.ID : ""
+  const name = typeof params?.name === "string" ? params.name.trim() : ""
+  const folder = state.folders.find((item) => item.ID === ID)
+
+  if (!folder || !name || name === folder.name) return
+
+  const duplicate = state.folders.some(
+    (item) =>
+      item.ID !== ID && item.name.toLowerCase() === name.toLowerCase(),
+  )
+
+  if (duplicate) return
+
+  state.folders = state.folders.map((item) =>
+    item.ID === ID ? { ...item, name, updatedAT: Date.now() } : item,
+  )
+
+  refresh()
+  save()
+}
+
 export const deleteFolder = async (params: { ID?: unknown }): Promise<void> => {
   const ID = typeof params?.ID === "string" ? params.ID : ""
   const folder = state.folders.find((item) => item.ID === ID)

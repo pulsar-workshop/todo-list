@@ -6,13 +6,14 @@ import {
   openPath,
   pickFiles,
   removeFile,
+  renameFolder,
   saveTask,
 } from "../actions.ts"
 import { formatDateValue, parseTime, isDateOnly } from "../format.ts"
 import { isImage, newID, todoAsText } from "../model.ts"
 import { state, setUI, uiValue, getDraft } from "../state.ts"
 import { saveSyncConnection } from "../sync.ts"
-import type { Attachment, Subtask, Todo } from "../types.ts"
+import type { Attachment, Folder, Subtask, Todo } from "../types.ts"
 
 export const TAG_PALETTE = [
   "#ef4444",
@@ -70,9 +71,39 @@ export const createFolder = (): void => {
   const folder = addFolder({ name })
 
   setUI("folderName", "")
-  setUI("folderCreating", false)
 
   if (folder) setUI("folderFilter", folder.ID)
+}
+
+export const openFolders = (): void => {
+  setUI("folderName", "")
+  setUI("folderRenameID", "")
+  setUI("foldersOpen", true)
+}
+
+export const closeFolders = (): void => {
+  setUI("foldersOpen", false)
+  setUI("folderRenameID", "")
+}
+
+export const startRenameFolder = (folder: Folder): void => {
+  setUI("folderRenameID", folder.ID)
+  setUI("folderRenameText", folder.name)
+}
+
+export const cancelRenameFolder = (): void => {
+  setUI("folderRenameID", "")
+  setUI("folderRenameText", "")
+}
+
+export const confirmRenameFolder = (): void => {
+  const ID = uiValue("folderRenameID", "")
+  const name = uiValue("folderRenameText", "").trim()
+
+  if (!ID || !name) return
+
+  renameFolder({ ID, name })
+  cancelRenameFolder()
 }
 
 export const openTagFilter = (): void => {

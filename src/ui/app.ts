@@ -14,7 +14,7 @@ import {
   When,
   Wrap,
 } from "pulsar"
-import { addTodo, deleteFolder } from "../actions.ts"
+import { addTodo } from "../actions.ts"
 import {
   breakpoints,
   setUI,
@@ -34,9 +34,10 @@ import {
   toggleTheme,
 } from "../theme.ts"
 import { EditorPage } from "./editor.ts"
+import { FolderSheet } from "./folder-sheet.ts"
 import {
   clearTodoFilters,
-  createFolder,
+  openFolders,
   openSync,
   openTagFilter,
   toggleFilterTag,
@@ -154,7 +155,6 @@ const MainPage = () => {
     state.folders.some((folder) => folder.ID === storedFolder)
       ? storedFolder
       : ""
-  const folderCreating = uiValue("folderCreating", false)
   const selectedTags = state.tags.filter((tag) => filterIDs.includes(tag.ID))
   const matchesTodo = (todo: Todo): boolean => {
     if (folderFilter === "none" && todo.folderID) return false
@@ -209,37 +209,19 @@ const MainPage = () => {
               color: folderFilter === folder.ID ? textColor(false) : textColor(true),
               selected: folderFilter === folder.ID,
               selectedColor: textColor(false),
-              tooltip: "Удерживайте, чтобы удалить папку",
               onClick: () => setUI("folderFilter", folder.ID),
-              onLongPress: () => void deleteFolder({ ID: folder.ID }),
             },
             folder.name,
           ),
         ),
         Button({
           variant: "ghost",
-          icon: "create_new_folder",
+          icon: "folder",
           size: "sm",
-          tooltip: "Новая папка",
-          onClick: () => setUI("folderCreating", !folderCreating),
+          tooltip: "Папки",
+          onClick: openFolders,
         }),
       ),
-      folderCreating
-        ? Row(
-            { gap: 8, fillWidth: true, align: "center" },
-            Input({
-              value: uiValue("folderName", ""),
-              placeholder: "Название папки",
-              variant: "outline",
-              textColor: textColor(false),
-              expand: true,
-              autoFocus: true,
-              onInput: (value) => setUI("folderName", value),
-              onSubmitted: createFolder,
-            }),
-            Button({ onClick: createFolder }, "Создать"),
-          )
-        : null,
       Card(
         {
           padding: 8,
@@ -322,7 +304,13 @@ const MainPage = () => {
             ? EmptyStateView()
             : Column(
                 { gap: 10, padding: 24, align: "center", fillWidth: true },
-                Icon({ name: "search_off", size: 32, color: textColor(true) }),
+                Icon({
+                  name: "search_off",
+                  size: 32,
+                  color: textColor(true),
+                  fillWidth: true,
+                  align: "center",
+                }),
                 Text({
                   text: "Ничего не найдено",
                   size: 17,
@@ -339,10 +327,10 @@ const MainPage = () => {
                   wrap: true,
                   fillWidth: true,
                 }),
-                Button({ onClick: clearTodoFilters }, "Сбросить"),
               ),
       }),
       uiValue("tagFilterOpen", false) ? TagFilterSheet() : null,
+      uiValue("foldersOpen", false) ? FolderSheet() : null,
     ),
   )
 }
