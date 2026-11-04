@@ -137,7 +137,7 @@ const attachmentRow = (file: Attachment) =>
     IconButton({
       icon: "download",
       tooltip: "Скачать",
-      onClick: () => void exportAttachment(file.path, file.name),
+      onClick: () => void exportAttachment(file.path, file.name, file.modifiedAT),
     }),
     IconButton({
       icon: "close",

@@ -319,17 +319,17 @@ export const pickFiles = async (params: {
     const destination = `${target}/${Date.now()}-${name}`
 
     try {
-      await fs.copy(source, destination)
-
       let size: number | undefined
       let modifiedAT: number | undefined
 
       try {
-        const info = await fs.stat(destination)
+        const info = await fs.stat(source)
 
         size = info.size
         modifiedAT = info.mtimeMs
       } catch {}
+
+      await fs.copy(source, destination)
 
       const attachment: Attachment = {
         name,
@@ -413,11 +413,12 @@ export const shareTodo = async (params: { ID?: unknown }): Promise<void> => {
 export const exportAttachment = async (
   path: string,
   name: string,
+  modifiedAT?: number,
 ): Promise<void> => {
   if (!path) return
 
   try {
-    const ok = await fs.exportTo(path, name)
+    const ok = await fs.exportTo(path, name, modifiedAT)
 
     if (ok) await dialog.toast("Скачано")
   } catch {}
