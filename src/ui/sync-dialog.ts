@@ -3,12 +3,14 @@ import { DEFAULT_PORT } from "../model.ts"
 import { setUI, uiValue } from "../state.ts"
 import { backgroundColor, textColor } from "../theme.ts"
 import { closeSync, saveSyncForm } from "./state.ts"
+import { TOUCH_SCROLL } from "./scroll.ts"
 
 export const SyncPage = () =>
   Box(
     { key: "sync", fill: true, color: backgroundColor() },
     Page(
       {
+        ...TOUCH_SCROLL,
         padding: 16,
         gap: 10,
         header: Row(
