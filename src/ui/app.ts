@@ -7,9 +7,11 @@ import {
   Input,
   Page,
   Row,
+  SearchField,
   Spacer,
   Text,
   When,
+  Wrap,
 } from "pulsar"
 import { addTodo } from "../actions.ts"
 import { setUI, syncColor, syncLabel, uiValue, app, state } from "../state.ts"
@@ -23,8 +25,14 @@ import {
   toggleTheme,
 } from "../theme.ts"
 import { EditorPage } from "./editor.ts"
-import { focusNewTask, openSync } from "./state.ts"
+import {
+  clearTodoFilters,
+  focusNewTask,
+  openSync,
+  toggleFilterTag,
+} from "./state.ts"
 import { SyncPage } from "./sync-dialog.ts"
+import { TagChip } from "./tag-chip.ts"
 import { TaskRow } from "./task-row.ts"
 import { ViewerPage } from "./viewer.ts"
 
@@ -85,7 +93,20 @@ const HeaderRow = () => {
 }
 
 const MainPage = () => {
-  const todos = state.todos
+  const query = uiValue("todoQuery", "").trim().toLowerCase()
+  const filterIDs = uiValue<string[]>("filterTags", [])
+  const usedTags = state.tags.filter((tag) =>
+    state.todos.some((todo) => todo.tags.includes(tag.ID)),
+  )
+  const todos = state.todos.filter((todo) => {
+    if (filterIDs.length > 0 && !todo.tags.some((ID) => filterIDs.includes(ID)))
+      return false
+
+    if (!query) return true
+
+    return `${todo.text}\n${todo.description}`.toLowerCase().includes(query)
+  })
+  const filtering = query.length > 0 || filterIDs.length > 0
   const focus = uiValue("newTaskFocus", false)
 
   return Box(
@@ -117,15 +138,53 @@ const MainPage = () => {
           Button({ onClick: submitNewTask }, "Добавить"),
         ),
       ),
+      Row(
+        { gap: 8, fillWidth: true, align: "center" },
+        SearchField({
+          value: uiValue("todoQuery", ""),
+          placeholder: "Поиск задач",
+          fillWidth: true,
+          onInput: (value) => setUI("todoQuery", value),
+        }),
+        filtering
+          ? Button(
+              {
+                variant: "ghost",
+                size: "sm",
+                onClick: clearTodoFilters,
+              },
+              "Сбросить",
+            )
+          : null,
+      ),
+      usedTags.length > 0
+        ? Wrap(
+            { gap: 6, fillWidth: true },
+            ...usedTags.map((tag) =>
+              TagChip({
+                tag,
+                selected: filterIDs.includes(tag.ID),
+                onClick: () => toggleFilterTag(tag.ID),
+              }),
+            ),
+          )
+        : null,
       When({
         test: todos.length === 0,
         then: () =>
-          EmptyState({
-            icon: "checklist",
-            title: "Пока пусто",
-            text: "Добавьте первую задачу.",
-            action: Button({ onClick: focusNewTask }, "Новая задача"),
-          }),
+          state.todos.length === 0
+            ? EmptyState({
+                icon: "checklist",
+                title: "Пока пусто",
+                text: "Добавьте первую задачу.",
+                action: Button({ onClick: focusNewTask }, "Новая задача"),
+              })
+            : EmptyState({
+                icon: "search_off",
+                title: "Ничего не найдено",
+                text: "Измените запрос или сбросьте фильтры.",
+                action: Button({ onClick: clearTodoFilters }, "Сбросить"),
+              }),
         else: () =>
           Column(
             { gap: 8, fillWidth: true },

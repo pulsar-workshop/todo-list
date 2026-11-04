@@ -61,6 +61,20 @@ const dateParts = (value: string): { day: number; month: number; year: number } 
   }
 }
 
+export const toggleFilterTag = (ID: string): void => {
+  const active = uiValue<string[]>("filterTags", [])
+
+  setUI(
+    "filterTags",
+    active.includes(ID) ? active.filter((item) => item !== ID) : [...active, ID],
+  )
+}
+
+export const clearTodoFilters = (): void => {
+  setUI("todoQuery", "")
+  setUI("filterTags", [])
+}
+
 export const openCalendar = (target: string): void => {
   const value = uiValue(target, "")
   const parts = dateParts(value)
