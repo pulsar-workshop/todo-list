@@ -24,7 +24,13 @@ export const SyncPage = () =>
             color: textColor(false),
           }),
           Spacer({ fillWidth: true }),
-          Button({ onClick: () => void saveSyncForm() }, "Сохранить"),
+        ),
+        footer: Row(
+          { fillWidth: true },
+          Button(
+            { fillWidth: true, onClick: () => void saveSyncForm() },
+            "Сохранить",
+          ),
         ),
       },
       Text({
