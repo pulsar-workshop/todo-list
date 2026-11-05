@@ -14,7 +14,7 @@ export const ViewerPage = component(() => {
         padding: 8,
         gap: 8,
         header: Row(
-          { fillWidth: true, align: "center" },
+          { fillWidth: true, alignItems: "center" },
           Button(
             {
               variant: "ghost",

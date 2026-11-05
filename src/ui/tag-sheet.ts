@@ -59,7 +59,7 @@ export const TagSheet = component(() => {
         }),
     Divider(),
     Row(
-      { gap: 8, fillWidth: true, align: "center" },
+      { gap: 8, fillWidth: true, alignItems: "center" },
       Input({
         value: ui.tagName,
         placeholder: "Новый тег",

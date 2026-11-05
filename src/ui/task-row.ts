@@ -55,7 +55,7 @@ export const TaskRow = component<{
 
   const tagLabels = tags.map((tag) =>
     Row(
-      { gap: 4, align: "center" },
+      { gap: 4, alignItems: "center" },
       Box({ width: 6, height: 6, radius: 3, color: tag.color as ColorValue }),
       Text({ text: tag.name, size: 11, color: textColor(true) }),
     ),
@@ -66,7 +66,7 @@ export const TaskRow = component<{
   if (todo.subtasks.length > 0)
     stats.push(
       Row(
-        { gap: 4, align: "center" },
+        { gap: 4, alignItems: "center" },
         Icon({ name: "checklist", size: 14, color: textColor(true) }),
         Text({ text: subtaskLabel(todo.subtasks), size: 11, color: textColor(true) }),
       ),
@@ -75,7 +75,7 @@ export const TaskRow = component<{
   if (todo.files.length > 0)
     stats.push(
       Row(
-        { gap: 4, align: "center" },
+        { gap: 4, alignItems: "center" },
         Icon({ name: "attach_file", size: 14, color: textColor(true) }),
         Text({ text: `Файлов: ${todo.files.length}`, size: 11, color: textColor(true) }),
       ),
@@ -147,7 +147,7 @@ export const TaskRow = component<{
           elide: "right",
         }),
         stats.length > 0
-          ? Row({ gap: 12, fillWidth: true, align: "center" }, ...stats)
+          ? Row({ gap: 12, fillWidth: true, alignItems: "center" }, ...stats)
           : null,
         tagLabels.length > 0
           ? Row({ gap: 10, fillWidth: true }, ...tagLabels)

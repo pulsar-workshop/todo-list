@@ -35,7 +35,7 @@ export const FolderSheet = component(() => {
           ...state.folders.map((folder) =>
             renameID === folder.ID
               ? Row(
-                  { key: folder.ID, gap: 6, fillWidth: true, align: "center" },
+                  { key: folder.ID, gap: 6, fillWidth: true, alignItems: "center" },
                   Input({
                     value: ui.folderRenameText,
                     variant: "outline",
@@ -52,7 +52,7 @@ export const FolderSheet = component(() => {
                   }),
                 )
               : Row(
-                  { key: folder.ID, gap: 4, fillWidth: true, align: "center" },
+                  { key: folder.ID, gap: 4, fillWidth: true, alignItems: "center" },
                   Text({
                     text: folder.name,
                     size: 15,
@@ -78,7 +78,7 @@ export const FolderSheet = component(() => {
       : Text({ text: "Папок пока нет.", size: 12, color: textColor(true) }),
     Divider(),
     Row(
-      { gap: 8, fillWidth: true, align: "center" },
+      { gap: 8, fillWidth: true, alignItems: "center" },
       Input({
         value: ui.folderName,
         placeholder: "Новая папка",

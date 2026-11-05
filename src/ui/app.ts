@@ -67,7 +67,7 @@ const Header = component(() => {
         color: textColor(false),
       }),
       Row(
-        { gap: 8, align: "center" },
+        { gap: 8, alignItems: "center" },
         Text({
           text: `Осталось: ${activeCount.get()}`,
           size: 12,
@@ -163,7 +163,7 @@ const NewTask = component(() => {
         borderWidth: 1,
       },
       Row(
-        { gap: 8, fillWidth: true, align: "center" },
+        { gap: 8, fillWidth: true, alignItems: "center" },
         Input({
           value: text.get(),
           placeholder: "Что нужно сделать?",
@@ -190,7 +190,7 @@ const SearchRow = component(() => {
     activeFolder.get() !== ""
 
   return Row(
-    { gap: 8, fillWidth: true, align: "center" },
+    { gap: 8, fillWidth: true, alignItems: "center" },
     SearchField({
       value: ui.todoQuery,
       placeholder: "Поиск задач",
@@ -212,7 +212,7 @@ const TagFilterButton = component(() => {
   const count = activeTags.get().length
 
   return Row(
-    { gap: 8, fillWidth: true, align: "center" },
+    { gap: 8, fillWidth: true, justify: "center", alignItems: "center" },
     Button(
       { variant: "outline", icon: "sell", onClick: openTagFilter },
       count > 0 ? `Теги · ${count}` : "Теги",
@@ -222,7 +222,7 @@ const TagFilterButton = component(() => {
 
 const message = (icon: UiNode, title: string, hint: string) => {
   return Column(
-    { gap: 10, padding: 24, align: "center", fillWidth: true },
+    { gap: 10, padding: 24, alignItems: "center", fillWidth: true },
     icon,
     Text({
       text: title,

@@ -43,7 +43,7 @@ export const SyncPage = component(() => {
 
   const header = () => {
     return (
-      <Row gap={6} fillWidth align="center">
+      <Row gap={6} fillWidth alignItems="center">
         <Button variant="ghost" icon="arrow_back" onClick={closeSync}>
           Назад
         </Button>

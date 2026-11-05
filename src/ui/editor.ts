@@ -103,7 +103,7 @@ const subtaskMeta = (subtask: Subtask): string => {
 
 const attachmentRow = (file: Attachment) =>
   Row(
-    { key: file.path, gap: 8, fillWidth: true, align: "center" },
+    { key: file.path, gap: 8, fillWidth: true, alignItems: "center" },
     attachmentIcon(file),
     Column(
       { gap: 2, expand: true, fillWidth: true },
@@ -145,7 +145,7 @@ const attachmentRow = (file: Attachment) =>
 
 const header = () =>
   Row(
-    { gap: 6, fillWidth: true, align: "center" },
+    { gap: 6, fillWidth: true, alignItems: "center" },
     Button(
       { variant: "ghost", icon: "arrow_back", onClick: closeEditor },
       "Назад",
@@ -162,7 +162,7 @@ const header = () =>
 
 const footer = () =>
   Row(
-    { gap: 4, fillWidth: true, align: "center" },
+    { gap: 4, fillWidth: true, alignItems: "center" },
     Button(
       {
         variant: "ghost",
@@ -183,7 +183,7 @@ const footer = () =>
 
 const dateInput = (key: DateField, withTime = true) =>
   Row(
-    { gap: 4, fillWidth: true, align: "center" },
+    { gap: 4, fillWidth: true, alignItems: "center" },
     Input({
       value: ui[key],
       variant: "outline",
@@ -211,7 +211,7 @@ const Subtasks = component<{ subtasks: Subtask[] }>(({ subtasks }) => {
     { gap: 6, fillWidth: true },
     ...subtasks.map((subtask, index) =>
       Row(
-        { key: subtask.ID, gap: 6, fillWidth: true, align: "center" },
+        { key: subtask.ID, gap: 6, fillWidth: true, alignItems: "center" },
         Button({
           variant: "ghost",
           icon: subtask.done ? "check_box" : "check_box_outline_blank",
@@ -277,7 +277,7 @@ export const EditorPage = component(() => {
         dateField("До (дедлайн)", "draftEnd"),
       )
     : Row(
-        { gap: 8, fillWidth: true, align: "start" },
+        { gap: 8, fillWidth: true, alignItems: "start" },
         dateField("С", "draftStart"),
         dateField("До (дедлайн)", "draftEnd"),
       )
@@ -327,13 +327,13 @@ export const EditorPage = component(() => {
       }),
       dateFields,
       Row(
-        { gap: 8, fillWidth: true, align: "center" },
+        { gap: 8, fillWidth: true, alignItems: "center" },
         Text({ text: "Создано", size: 12, color: textColor(true), width: 76 }),
         dateInput("draftCreated"),
       ),
       draft && draft.completedAT !== null
         ? Row(
-            { gap: 8, fillWidth: true, align: "center" },
+            { gap: 8, fillWidth: true, alignItems: "center" },
             Text({
               text: "Завершено",
               size: 12,

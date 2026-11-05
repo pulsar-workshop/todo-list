@@ -110,7 +110,7 @@ export const CalendarSheet = component(() => {
       onClose: closeCalendar,
     },
     Row(
-      { gap: 4, fillWidth: true, align: "center" },
+      { gap: 4, fillWidth: true, alignItems: "center" },
       Button(
         {
           variant: "ghost",
@@ -170,7 +170,7 @@ export const CalendarSheet = component(() => {
           { gap: 6, fillWidth: true },
           Text({ text: "Время", size: 11, color: textColor(true) }),
           Row(
-            { gap: 6, fillWidth: true, align: "center" },
+            { gap: 6, fillWidth: true, alignItems: "center" },
             timeInput("calendarHour", "ЧЧ"),
             Text({ text: ":", size: 16, color: textColor(false) }),
             timeInput("calendarMinute", "ММ"),
