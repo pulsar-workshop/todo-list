@@ -48,7 +48,7 @@ import {
   openSync,
   openTagFilter,
 } from "./state.ts"
-import { SyncPage } from "./sync-dialog.ts"
+import { SyncPage } from "./sync-dialog.tsx"
 import { TagFilterSheet } from "./tag-filter-sheet.ts"
 import { TaskRow } from "./task-row.ts"
 import { ViewerPage } from "./viewer.ts"
