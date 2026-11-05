@@ -59,7 +59,8 @@ export const TaskRow = component<{
   key: string
   todo: Todo
   visible?: boolean
-}>(({ todo, visible = true }) => {
+  hideDue?: boolean
+}>(({ todo, visible = true, hideDue = false }) => {
   const folder = todo.folderID
     ? state.folders.find((item) => item.ID === todo.folderID)
     : null
@@ -68,7 +69,7 @@ export const TaskRow = component<{
     .filter((tag): tag is Tag => tag !== null)
 
   const meta = [
-    dueItem(todo),
+    hideDue ? null : dueItem(todo),
     folder ? metaItem("folder", "folder", folder.name) : null,
     todo.subtasks.length > 0
       ? metaItem("subtasks", "checklist", subtaskLabel(todo.subtasks))

@@ -15,6 +15,7 @@ import { sortedTodos, ui } from "../state.ts"
 import {
   accentColor,
   backgroundColor,
+  borderColor,
   dangerColor,
   onAccentColor,
   textColor,
@@ -33,6 +34,7 @@ const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 const WEEKDAYS_FULL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
 const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
 const MONTHS_OF = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
+const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 const MAX_RANGE_DAYS = 62
 
 const dayKey = (year: number, month: number, day: number): string => {
@@ -174,6 +176,76 @@ const DayTasks = component(() => {
   )
 })
 
+const dueOf = (todo: Todo): number => todo.endAT ?? todo.startAT ?? 0
+
+const timelineTodos = computed(() => {
+  return sortedTodos
+    .get()
+    .filter((todo) => !todo.done && (todo.endAT !== null || todo.startAT !== null))
+    .sort((a, b) => dueOf(a) - dueOf(b))
+})
+
+const dateColor = (todo: Todo): ColorValue => {
+  const tone = dueTone(todo)
+
+  if (tone === "overdue") return dangerColor()
+  if (tone === "today") return accentColor()
+
+  return textColor(false)
+}
+
+const timelineDate = (todo: Todo): UiNode => {
+  const date = new Date(dueOf(todo))
+
+  return Column(
+    {
+      width: 44,
+      paddingY: 8,
+      alignItems: "center",
+      onClick: () => selectTaskDay(date),
+    },
+    Text({
+      text: String(date.getDate()),
+      size: 16,
+      weight: "semibold",
+      color: dateColor(todo),
+    }),
+    Text({
+      text: MONTHS_SHORT[date.getMonth()] ?? "",
+      size: 11,
+      color: textColor(true),
+    }),
+  )
+}
+
+const dayOf = (todo: Todo): string => {
+  const date = new Date(dueOf(todo))
+
+  return dayKey(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+const Timeline = component(() => {
+  const selected = dayKey(ui.taskCalendarYear, ui.taskCalendarMonth, ui.taskCalendarDay)
+  const todos = timelineTodos.get().filter((todo) => !todoDays(todo).includes(selected))
+
+  if (todos.length === 0) return Column({})
+
+  return Column(
+    { gap: 8, fillWidth: true },
+    sectionTitle("ТАЙМЛАЙН"),
+    ...todos.map((todo, index) =>
+      Row(
+        { key: todo.ID, gap: 8, fillWidth: true },
+        index === 0 || dayOf(todos[index - 1] as Todo) !== dayOf(todo)
+          ? timelineDate(todo)
+          : Box({ width: 44 }),
+        Box({ width: 1, fillHeight: true, color: borderColor() }),
+        Column({ flex: 1, fillWidth: true }, TaskRow({ key: todo.ID, todo, hideDue: true })),
+      ),
+    ),
+  )
+})
+
 const Header = component(() => {
   const now = new Date()
   const onToday =
@@ -229,6 +301,7 @@ export const TaskCalendarPage = component(() => {
       },
       MonthGrid({}),
       DayTasks({}),
+      Timeline({}),
     ),
   )
 })
