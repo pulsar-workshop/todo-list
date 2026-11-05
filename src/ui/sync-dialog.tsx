@@ -13,7 +13,7 @@ import { DEFAULT_PORT } from "../model.ts"
 import { state } from "../state.ts"
 import { saveSyncConnection } from "../sync.ts"
 import { backgroundColor, textColor } from "../theme.ts"
-import { iconTile } from "./kit.ts"
+import { iconTile, screenMotion } from "./kit.ts"
 import { closeSync } from "./state.ts"
 
 export const SyncPage = component(() => {
@@ -65,7 +65,7 @@ export const SyncPage = component(() => {
 
   return () => {
     return (
-      <Box key="sync" fill color={backgroundColor()}>
+      <Box key="sync" fill color={backgroundColor()} {...screenMotion}>
         <Page padding={16} gap={10} header={header()} footer={footer()}>
           <Text size={10} weight="medium" color={textColor(true)} letterSpacing={1.2}>
             СЕРВЕР

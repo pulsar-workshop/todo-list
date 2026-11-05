@@ -38,7 +38,7 @@ import type { Todo } from "../types.ts"
 import { Composer } from "./composer.ts"
 import { EditorPage } from "./editor.ts"
 import { FolderSheet } from "./folder-sheet.ts"
-import { iconTile, pill } from "./kit.ts"
+import { iconTile, pill, screenMotion } from "./kit.ts"
 import {
   clearTodoFilters,
   openFolders,
@@ -282,9 +282,15 @@ export const renderApp = () => {
 
   return Stack(
     { key: "root", fill: true },
-    KeepAlive({ key: "list", active: !covered }, () => MainPage({})),
-    KeepAlive({ key: "calendar", active: ui.taskCalendarOpen && !ui.editorOpen }, () =>
-      TaskCalendarPage({}),
+    KeepAlive({ key: "list", active: !covered, ...screenMotion }, () => MainPage({})),
+    KeepAlive(
+      {
+        key: "calendar",
+        active: ui.taskCalendarOpen && !ui.editorOpen,
+        preload: ui.calendarReady,
+        ...screenMotion,
+      },
+      () => TaskCalendarPage({}),
     ),
     ui.syncOpen ? SyncPage({}) : null,
     ui.editorOpen ? EditorPage({}) : null,

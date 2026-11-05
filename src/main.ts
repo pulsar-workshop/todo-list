@@ -1,7 +1,7 @@
 import { openPath } from "./actions.ts"
 import { installMenu } from "./menu.ts"
 import { watchTheme } from "./theme.ts"
-import { app, state } from "./state.ts"
+import { app, state, ui } from "./state.ts"
 import { flushState, loadSyncSettings, restore } from "./storage.ts"
 import { pull, push, syncNow } from "./sync.ts"
 import { renderApp } from "./ui/app.ts"
@@ -43,6 +43,9 @@ const start = async (): Promise<void> => {
   await watchTheme()
 
   app.window("main").render(renderApp)
+  setTimeout(() => {
+    ui.calendarReady = true
+  }, 1500)
   app.run()
 
   if (state.sync.dirty) void push()

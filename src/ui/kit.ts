@@ -49,8 +49,9 @@ export const iconTile = (options: {
       a11yLabel: options.tooltip,
       justify: "center",
       alignItems: "center",
-      pressed: { color: hoverSurfaceColor() },
-      transition: { duration: 80 },
+      hover: { color: hoverSurfaceColor() },
+      pressed: { color: borderColor() },
+      transition: { duration: 120 },
       onClick: options.onClick,
     },
     Icon({
@@ -77,8 +78,9 @@ export const accentButton = (options: {
       color: accentColor(),
       justify: options.label ? undefined : "center",
       alignItems: "center",
-      pressed: { opacity: 0.8 },
-      transition: { duration: 80 },
+      hover: { opacity: 0.9 },
+      pressed: { opacity: 0.75 },
+      transition: { duration: 120 },
       onClick: options.onClick,
     },
     options.icon
@@ -108,8 +110,9 @@ export const pill = (options: {
       paddingY: 5,
       borderWidth: 1,
       borderColor: options.selected ? accentColor() : borderColor(),
-      pressed: { color: hoverSurfaceColor() },
-      transition: { duration: 80 },
+      hover: { color: hoverSurfaceColor() },
+      pressed: { color: borderColor() },
+      transition: { duration: 120 },
       onClick: options.onClick,
     },
     Text({
@@ -128,8 +131,11 @@ export const squareCheck = (options: {
     {
       width: 40,
       height: 40,
+      radius: 8,
       justify: "center",
       alignItems: "center",
+      hover: { color: hoverSurfaceColor() },
+      transition: { duration: 120 },
       onClick: options.onToggle,
     },
     Column(
@@ -160,3 +166,9 @@ export const metaItem = (
     Icon({ name: icon, size: 12, color }),
     Text({ text, size: 11, color }),
   )
+
+export const screenMotion = {
+  enter: { opacity: 0, y: 14 },
+  exit: { opacity: 0 },
+  transition: { duration: 220, curve: "ease" },
+} as const

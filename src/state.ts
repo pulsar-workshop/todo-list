@@ -52,6 +52,7 @@ export const ui = createState({
   calendarMinute: "",
   calendarSecond: "",
   taskCalendarOpen: false,
+  calendarReady: false,
   taskCalendarYear: 0,
   taskCalendarMonth: 0,
   taskCalendarDay: 0,

@@ -52,6 +52,7 @@ import { TagChip } from "./tag-chip.ts"
 import {
   accentButton,
   iconTile,
+  screenMotion,
   section,
   sectionTitle,
   squareCheck,
@@ -191,8 +192,9 @@ const dateRow = (label: string, key: DateField, withTime = true) =>
       borderColor: borderColor(),
       fillWidth: true,
       alignItems: "center",
-      pressed: { color: hoverSurfaceColor() },
-      transition: { duration: 80 },
+      hover: { color: hoverSurfaceColor() },
+      pressed: { color: borderColor() },
+      transition: { duration: 120 },
       onClick: () => openCalendar(key, withTime),
     },
     Icon({ name: "calendar_month", size: 18, color: textColor(true) }),
@@ -332,7 +334,7 @@ export const EditorPage = component(() => {
   const isAllDay = ui.draftDateMode === "allDay"
 
   return Box(
-    { key: "editor", fill: true, color: backgroundColor() },
+    { key: "editor", fill: true, color: backgroundColor(), ...screenMotion },
     Page(
       { padding: 14, gap: 12, header: header() },
       section(
