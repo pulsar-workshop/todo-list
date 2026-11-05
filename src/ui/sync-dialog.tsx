@@ -14,7 +14,6 @@ import { state } from "../state.ts"
 import { saveSyncConnection } from "../sync.ts"
 import { backgroundColor, textColor } from "../theme.ts"
 import { closeSync } from "./state.ts"
-import { TOUCH_SCROLL } from "./scroll.ts"
 
 export const SyncPage = component(() => {
   const host = signal(state.syncSettings.host)
@@ -68,7 +67,7 @@ export const SyncPage = component(() => {
   return () => {
     return (
       <Box key="sync" fill color={backgroundColor()}>
-        <Page {...TOUCH_SCROLL} padding={16} gap={10} header={header()} footer={footer()}>
+        <Page padding={16} gap={10} header={header()} footer={footer()}>
           <Text size={10} weight="medium" color={textColor(true)} letterSpacing={1.2}>
             СЕРВЕР
           </Text>

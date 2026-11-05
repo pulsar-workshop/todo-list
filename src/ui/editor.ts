@@ -40,7 +40,6 @@ import {
   updateDraft,
   updateDraftSubtask,
 } from "./state.ts"
-import { TOUCH_SCROLL } from "./scroll.ts"
 import { CalendarSheet } from "./calendar.ts"
 import { TagSheet } from "./tag-sheet.ts"
 import { TagChip } from "./tag-chip.ts"
@@ -297,7 +296,6 @@ export const EditorPage = component(() => {
     { key: "editor", fill: true, color: backgroundColor() },
     Page(
       {
-        ...TOUCH_SCROLL,
         padding: compact ? 12 : 16,
         gap: 10,
         header: header(),

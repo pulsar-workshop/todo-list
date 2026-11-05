@@ -1,7 +1,6 @@
 import { Box, Button, Column, Image, Page, Row, Spacer, Text, component } from "pulsar"
 import { fileURL, ui } from "../state.ts"
 import { backgroundColor, textColor } from "../theme.ts"
-import { TOUCH_SCROLL } from "./scroll.ts"
 
 export const ViewerPage = component(() => {
   const path = ui.viewerPath
@@ -10,7 +9,6 @@ export const ViewerPage = component(() => {
     { key: "viewer", fill: true, color: backgroundColor() },
     Page(
       {
-        ...TOUCH_SCROLL,
         padding: 8,
         gap: 8,
         header: Row(

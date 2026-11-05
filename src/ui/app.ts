@@ -41,7 +41,6 @@ import {
 import type { Todo } from "../types.ts"
 import { EditorPage } from "./editor.ts"
 import { FolderSheet } from "./folder-sheet.ts"
-import { TOUCH_SCROLL } from "./scroll.ts"
 import {
   clearTodoFilters,
   openFolders,
@@ -309,7 +308,6 @@ const MainPage = component(() => {
     { key: "main", fill: true, color: backgroundColor() },
     Page(
       {
-        ...TOUCH_SCROLL,
         padding: compact ? 14 : 20,
         gap: compact ? 10 : 14,
         header: Header({}),
