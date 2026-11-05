@@ -86,8 +86,16 @@ const attachmentIcon = (file: Attachment) => {
     )
   }
 
-  return Box(
-    { width: 44, height: 44, radius: 8, color: "surface", align: "center" },
+  return Column(
+    {
+      width: 44,
+      height: 44,
+      radius: 8,
+      color: "surface",
+      align: "center",
+      justify: "center",
+      alignItems: "center",
+    },
     Icon({ name: "attach_file", size: 20, color: textColor(true) }),
   )
 }

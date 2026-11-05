@@ -328,11 +328,14 @@ const MainPage = component(() => {
 export const renderApp = () => {
   const covered = ui.editorOpen || ui.syncOpen || ui.viewerPath !== ""
 
-  return Stack(
-    { key: "root", fill: true },
-    Box({ key: "list", fill: true, visible: !covered }, MainPage({})),
-    ui.syncOpen ? SyncPage({}) : null,
-    ui.editorOpen ? EditorPage({}) : null,
-    ui.viewerPath ? ViewerPage({}) : null,
+  return Box(
+    { key: "frame", fill: true, padding: 8 },
+    Stack(
+      { key: "root", fill: true },
+      Box({ key: "list", fill: true, visible: !covered }, MainPage({})),
+      ui.syncOpen ? SyncPage({}) : null,
+      ui.editorOpen ? EditorPage({}) : null,
+      ui.viewerPath ? ViewerPage({}) : null,
+    ),
   )
 }
