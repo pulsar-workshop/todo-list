@@ -18,7 +18,7 @@ import {
   component,
 } from "pulsar"
 import { exportAttachment } from "../actions.ts"
-import { fileMeta, shortDate } from "../format.ts"
+import { fileMeta, formatDateValue } from "../format.ts"
 import { isImage } from "../model.ts"
 import { breakpoints, fileURL, state, ui, type DateField } from "../state.ts"
 import {
@@ -101,6 +101,15 @@ const attachmentIcon = (file: Attachment) => {
     },
     Icon({ name: "attach_file", size: 20, color: textColor(true) }),
   )
+}
+
+const subtaskMeta = (subtask: Subtask): string => {
+  const parts = [`Создано: ${formatDateValue(subtask.createdAT, false)}`]
+
+  if (subtask.completedAT !== null)
+    parts.push(`Завершено: ${formatDateValue(subtask.completedAT, false)}`)
+
+  return parts.join(" · ")
 }
 
 const attachmentRow = (file: Attachment) =>
@@ -249,13 +258,13 @@ const subtaskRow = (subtask: Subtask, index: number) =>
     Column(
       { gap: 2, paddingY: 10, flex: 1, fillWidth: true },
       subtaskText(subtask, index),
-      subtask.completedAT !== null
-        ? Text({
-            text: `Готово: ${shortDate(subtask.completedAT, false)}`,
-            size: 11,
-            color: textColor(true),
-          })
-        : null,
+      Text({
+        text: subtaskMeta(subtask),
+        size: 11,
+        color: textColor(true),
+        wrap: true,
+        fillWidth: true,
+      }),
     ),
     Column(
       {
