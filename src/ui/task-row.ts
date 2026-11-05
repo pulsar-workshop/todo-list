@@ -13,7 +13,7 @@ import { toggleTodo } from "../actions.ts"
 import { dueTone, shortDate, subtaskLabel } from "../format.ts"
 import { state, tagByID } from "../state.ts"
 import {
-  accentFrom,
+  accentColor,
   borderColor,
   dangerColor,
   hoverSurfaceColor,
@@ -21,16 +21,16 @@ import {
   textColor,
 } from "../theme.ts"
 import type { Tag, Todo } from "../types.ts"
-import { metaItem, roundCheck } from "./kit.ts"
+import { metaItem, squareCheck } from "./kit.ts"
 import { openEditor } from "./state.ts"
 
 const toneColor = (todo: Todo): ColorValue => {
   const tone = dueTone(todo)
 
   if (tone === "overdue") return dangerColor()
-  if (tone === "today") return accentFrom()
+  if (tone === "today") return accentColor()
 
-  return "transparent"
+  return textColor(true)
 }
 
 const dueItem = (todo: Todo): UiNode | null => {
@@ -39,13 +39,12 @@ const dueItem = (todo: Todo): UiNode | null => {
   if (value === null) return null
 
   const allDay = todo.endAT !== null ? todo.endAllDay : todo.startAllDay
-  const tone = dueTone(todo)
 
   return metaItem(
     "due",
     "schedule",
     shortDate(value, allDay),
-    tone === "overdue" || tone === "today" ? toneColor(todo) : textColor(true),
+    toneColor(todo),
   )
 }
 
@@ -84,15 +83,15 @@ export const TaskRow = component<{
     {
       key: todo.ID,
       visible,
-      padding: 4,
-      radius: 16,
+      padding: 2,
+      radius: 10,
       elevation: 0,
       color: surfaceColor(),
       hoverColor: hoverSurfaceColor(),
       borderColor: borderColor(),
       borderWidth: 1,
       opacity: todo.done ? 0.55 : 1,
-      pressed: { scale: 0.98, color: hoverSurfaceColor() },
+      pressed: { color: hoverSurfaceColor() },
       enter: { opacity: 0 },
       exit: { opacity: 0 },
       transition: { duration: 180 },
@@ -112,16 +111,15 @@ export const TaskRow = component<{
     },
     Row(
       { gap: 2, fillWidth: true },
-      Box({ width: 3, radius: 2, fillHeight: true, color: toneColor(todo) }),
-      roundCheck({
+      squareCheck({
         done: todo.done,
         onToggle: () => toggleTodo({ ID: todo.ID }),
       }),
       Column(
-        { gap: 4, paddingY: 8, paddingRight: 10, fillWidth: true, flex: 1 },
+        { gap: 3, paddingY: 9, paddingRight: 10, fillWidth: true, flex: 1 },
         Text({
           text: todo.text,
-          size: 15,
+          size: 14,
           weight: "medium",
           strike: todo.done,
           fillWidth: true,
@@ -133,7 +131,7 @@ export const TaskRow = component<{
         todo.description
           ? Text({
               text: todo.description,
-              size: 13,
+              size: 12,
               color: textColor(true),
               fillWidth: true,
               maxLines: 1,

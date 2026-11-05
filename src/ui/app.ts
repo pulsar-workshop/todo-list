@@ -55,13 +55,13 @@ const Header = component(() => {
   const compact = breakpoints.is("compact")
 
   return Row(
-    { gap: 8, fillWidth: true, alignItems: "center" },
+    { gap: 2, fillWidth: true, alignItems: "center" },
     Column(
       { gap: 2, flex: 1 },
       Text({
         text: "Задачи",
-        size: 28,
-        weight: "bold",
+        size: 22,
+        weight: "semibold",
         color: textColor(false),
       }),
       Row(
@@ -71,7 +71,7 @@ const Header = component(() => {
           text: compact
             ? `Осталось ${activeCount.get()}`
             : `Осталось ${activeCount.get()} · ${syncLabel()}`,
-          size: 13,
+          size: 12,
           color: textColor(true),
         }),
       ),
@@ -118,7 +118,7 @@ const FolderPills = component(() => {
       key: "folders",
       icon: "create_new_folder",
       tooltip: "Папки",
-      size: 34,
+      size: 28,
       onClick: openFolders,
     }),
   )
@@ -261,8 +261,8 @@ const MainPage = component(() => {
     { key: "main", fill: true, color: backgroundColor() },
     Page(
       {
-        padding: 16,
-        gap: 12,
+        padding: 14,
+        gap: 10,
         header: Header({}),
         footer: NewTask({}),
       },

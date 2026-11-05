@@ -1,5 +1,5 @@
 import { Input, Row, component, signal } from "pulsar"
-import { accentFrom, surfaceColor, textColor } from "../theme.ts"
+import { borderColor, surfaceColor, textColor } from "../theme.ts"
 import { accentButton } from "./kit.ts"
 
 export const Composer = component<{
@@ -22,14 +22,12 @@ export const Composer = component<{
   return () => {
     return Row(
       {
-        gap: 6,
-        padding: 6,
-        radius: 20,
+        gap: 4,
+        padding: 4,
+        radius: 10,
         color: surfaceColor(),
         borderWidth: 1,
-        borderColor: accentFrom(),
-        elevation: 3,
-        shadowColor: accentFrom(),
+        borderColor: borderColor(),
         fillWidth: true,
         alignItems: "center",
       },
@@ -46,7 +44,7 @@ export const Composer = component<{
         onSubmitted: submit,
         onBlur: props.onBlur,
       }),
-      accentButton({ icon: "arrow_upward", onClick: submit }),
+      accentButton({ icon: "add", onClick: submit }),
     )
   }
 })

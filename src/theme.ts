@@ -27,13 +27,13 @@ const darkPalette = {
   background: "#0a0b12",
   surface: "#12141e",
   surfaceVariant: "#1a1d2a",
-  primary: "#b388ff",
+  primary: "#8b9dff",
   text: "#e8eaf6",
   textSecondary: "#8b90a8",
   border: "#262a3b",
   layer3: "#161925",
   layer4: "#1e2130",
-  radius: 14,
+  radius: 8,
   spacing: 8,
 }
 
@@ -94,16 +94,12 @@ export const hoverSurfaceColor = (): ColorValue => {
   return isDarkTheme() ? "#1a1d2a" : "#f0f1f7"
 }
 
-export const accentFrom = (): ColorValue => {
-  return isDarkTheme() ? "#5ce1e6" : "#0ea5b7"
-}
-
-export const accentTo = (): ColorValue => {
-  return isDarkTheme() ? "#b388ff" : "#6c5ce7"
+export const accentColor = (): ColorValue => {
+  return isDarkTheme() ? "#8b9dff" : "#6c5ce7"
 }
 
 export const dangerColor = (): ColorValue => {
-  return isDarkTheme() ? "#ff5c8a" : "#e11d48"
+  return isDarkTheme() ? "#ef5350" : "#dc2626"
 }
 
 export const onAccentColor = (): ColorValue => {

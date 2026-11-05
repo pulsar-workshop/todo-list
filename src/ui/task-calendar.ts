@@ -13,8 +13,7 @@ import { addTodo } from "../actions.ts"
 import { dueTone } from "../format.ts"
 import { sortedTodos, ui } from "../state.ts"
 import {
-  accentFrom,
-  accentTo,
+  accentColor,
   backgroundColor,
   dangerColor,
   onAccentColor,
@@ -22,7 +21,7 @@ import {
 } from "../theme.ts"
 import type { Todo } from "../types.ts"
 import { Composer } from "./composer.ts"
-import { accentGradient, iconTile, pill, sectionTitle } from "./kit.ts"
+import { iconTile, pill, sectionTitle } from "./kit.ts"
 import {
   closeTaskCalendar,
   selectTaskDay,
@@ -73,7 +72,7 @@ const dotColor = (todo: Todo, selected: boolean): ColorValue => {
   if (todo.done) return textColor(true)
   if (dueTone(todo) === "overdue") return dangerColor()
 
-  return accentTo()
+  return accentColor()
 }
 
 const dayCell = (year: number, month: number, day: number): UiNode => {
@@ -87,30 +86,28 @@ const dayCell = (year: number, month: number, day: number): UiNode => {
     {
       key: `day-${day}`,
       flex: 1,
-      height: 50,
-      radius: 14,
+      height: 44,
+      radius: 8,
       gap: 3,
       justify: "center",
       alignItems: "center",
-      gradient: selected ? accentGradient() : undefined,
+      color: selected ? accentColor() : "transparent",
       borderWidth: today && !selected ? 1 : 0,
-      borderColor: accentFrom(),
-      pressed: { scale: 0.92 },
-      transition: { duration: 90 },
+      borderColor: accentColor(),
       onClick: () => selectTaskDay(new Date(year, month, day)),
     },
     Text({
       text: String(day),
-      size: 15,
+      size: 14,
       weight: selected || today ? "semibold" : "normal",
-      color: selected ? onAccentColor() : today ? accentFrom() : textColor(false),
+      color: selected ? onAccentColor() : today ? accentColor() : textColor(false),
     }),
     Row(
-      { gap: 3, height: 5, alignItems: "center" },
+      { gap: 3, height: 4, alignItems: "center" },
       ...todos
         .slice(0, 3)
         .map((todo) =>
-          Box({ key: todo.ID, width: 5, height: 5, radius: 3, color: dotColor(todo, selected) }),
+          Box({ key: todo.ID, width: 4, height: 4, radius: 2, color: dotColor(todo, selected) }),
         ),
     ),
   )
@@ -123,9 +120,9 @@ const MonthGrid = component(() => {
   const total = new Date(year, month + 1, 0).getDate()
   const cells: UiNode[] = []
 
-  for (let i = 0; i < lead; i++) cells.push(Box({ key: `lead-${i}`, flex: 1, height: 50 }))
+  for (let i = 0; i < lead; i++) cells.push(Box({ key: `lead-${i}`, flex: 1, height: 44 }))
   for (let day = 1; day <= total; day++) cells.push(dayCell(year, month, day))
-  for (let i = 0; cells.length % 7 !== 0; i++) cells.push(Box({ key: `tail-${i}`, flex: 1, height: 50 }))
+  for (let i = 0; cells.length % 7 !== 0; i++) cells.push(Box({ key: `tail-${i}`, flex: 1, height: 44 }))
 
   const weeks: UiNode[] = []
 
@@ -171,7 +168,7 @@ const DayTasks = component(() => {
       `${WEEKDAYS_FULL[date.getDay()]}, ${date.getDate()} ${MONTHS_OF[date.getMonth()]}`.toUpperCase(),
     ),
     todos.length === 0
-      ? Text({ text: "На этот день задач нет", size: 14, color: textColor(true) })
+      ? Text({ text: "На этот день задач нет", size: 13, color: textColor(true) })
       : null,
     ...todos.map((todo) => TaskRow({ key: todo.ID, todo })),
   )
@@ -185,11 +182,11 @@ const Header = component(() => {
     ui.taskCalendarDay === now.getDate()
 
   return Row(
-    { gap: 8, fillWidth: true, alignItems: "center" },
+    { gap: 2, fillWidth: true, alignItems: "center" },
     iconTile({ icon: "arrow_back", tooltip: "Назад", onClick: closeTaskCalendar }),
     Text({
       text: `${MONTHS[ui.taskCalendarMonth]} ${ui.taskCalendarYear}`,
-      size: 20,
+      size: 18,
       weight: "semibold",
       color: textColor(false),
       flex: 1,
@@ -214,8 +211,8 @@ export const TaskCalendarPage = component(() => {
     { key: "task-calendar", fill: true, color: backgroundColor() },
     Page(
       {
-        padding: 16,
-        gap: 16,
+        padding: 14,
+        gap: 14,
         header: Header({}),
         footer: Composer({
           placeholder: "Задача на этот день",

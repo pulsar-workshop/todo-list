@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Column,
+  Divider,
   Icon,
   IconButton,
   Image,
@@ -21,7 +22,7 @@ import { fileMeta, shortDate } from "../format.ts"
 import { isImage } from "../model.ts"
 import { breakpoints, fileURL, state, ui, type DateField } from "../state.ts"
 import {
-  accentFrom,
+  accentColor,
   backgroundColor,
   borderColor,
   dangerColor,
@@ -50,11 +51,10 @@ import { TagSheet } from "./tag-sheet.ts"
 import { TagChip } from "./tag-chip.ts"
 import {
   accentButton,
-  accentGradient,
   iconTile,
-  panel,
-  roundCheck,
+  section,
   sectionTitle,
+  squareCheck,
 } from "./kit.ts"
 
 const attachmentIcon = (file: Attachment) => {
@@ -147,11 +147,11 @@ const attachmentRow = (file: Attachment) =>
 
 const header = () =>
   Row(
-    { gap: 8, fillWidth: true, alignItems: "center" },
+    { gap: 2, fillWidth: true, alignItems: "center" },
     iconTile({ icon: "arrow_back", tooltip: "Назад", onClick: closeEditor }),
     Text({
       text: "Задача",
-      size: 20,
+      size: 18,
       weight: "semibold",
       color: textColor(false),
       flex: 1,
@@ -174,24 +174,25 @@ const dateRow = (label: string, key: DateField, withTime = true) =>
   Row(
     {
       key,
-      gap: 12,
-      paddingX: 12,
-      paddingY: 10,
-      radius: 14,
-      color: hoverSurfaceColor(),
+      gap: 10,
+      paddingX: 10,
+      paddingY: 7,
+      radius: 8,
+      borderWidth: 1,
+      borderColor: borderColor(),
       fillWidth: true,
       alignItems: "center",
-      pressed: { scale: 0.98 },
-      transition: { duration: 90 },
+      pressed: { color: hoverSurfaceColor() },
+      transition: { duration: 80 },
       onClick: () => openCalendar(key, withTime),
     },
-    Icon({ name: "calendar_month", size: 20, color: accentFrom() }),
+    Icon({ name: "calendar_month", size: 18, color: textColor(true) }),
     Column(
       { gap: 1, flex: 1 },
-      Text({ text: label, size: 12, color: textColor(true) }),
+      Text({ text: label, size: 11, color: textColor(true) }),
       Text({
         text: ui[key] || "Не выбрано",
-        size: 15,
+        size: 14,
         color: textColor(!ui[key]),
       }),
     ),
@@ -222,7 +223,7 @@ const subtaskText = (subtask: Subtask, index: number) => {
     },
     Text({
       text: subtask.text,
-      size: 15,
+      size: 14,
       strike: subtask.done,
       wrap: true,
       fillWidth: true,
@@ -234,9 +235,8 @@ const subtaskText = (subtask: Subtask, index: number) => {
 const subtaskRow = (subtask: Subtask, index: number) =>
   Row(
     { key: subtask.ID, gap: 2, fillWidth: true, alignItems: "start" },
-    roundCheck({
+    squareCheck({
       done: subtask.done,
-      size: 22,
       onToggle: () => {
         const done = !subtask.done
 
@@ -247,12 +247,12 @@ const subtaskRow = (subtask: Subtask, index: number) =>
       },
     }),
     Column(
-      { gap: 2, paddingY: 9, flex: 1, fillWidth: true },
+      { gap: 2, paddingY: 10, flex: 1, fillWidth: true },
       subtaskText(subtask, index),
       subtask.completedAT !== null
         ? Text({
             text: `Готово: ${shortDate(subtask.completedAT, false)}`,
-            size: 12,
+            size: 11,
             color: textColor(true),
           })
         : null,
@@ -263,7 +263,6 @@ const subtaskRow = (subtask: Subtask, index: number) =>
         height: 40,
         justify: "center",
         alignItems: "center",
-        pressed: { scale: 0.85 },
         onClick: () => removeDraftSubtask(index),
       },
       Icon({ name: "close", size: 18, color: textColor(true) }),
@@ -275,24 +274,22 @@ const subtaskProgress = (subtasks: Subtask[]) => {
   const left = subtasks.length - done
 
   return Row(
-    { height: 3, radius: 2, clip: true, fillWidth: true },
-    done > 0
-      ? Box({ key: "done", flex: done, height: 3, gradient: accentGradient() })
-      : null,
-    left > 0 ? Box({ key: "left", flex: left, height: 3, color: borderColor() }) : null,
+    { height: 2, fillWidth: true },
+    done > 0 ? Box({ key: "done", flex: done, height: 2, color: accentColor() }) : null,
+    left > 0 ? Box({ key: "left", flex: left, height: 2, color: borderColor() }) : null,
   )
 }
 
 const Subtasks = component<{ subtasks: Subtask[] }>(({ subtasks }) => {
   const done = subtasks.filter((subtask) => subtask.done).length
 
-  return panel(
-    { gap: 6 },
+  return section(
+    { gap: 4 },
     Row(
       { fillWidth: true, justify: "between", alignItems: "center" },
       sectionTitle("ПОДЗАДАЧИ"),
       subtasks.length > 0
-        ? Text({ text: `${done}/${subtasks.length}`, size: 12, color: textColor(true) })
+        ? Text({ text: `${done}/${subtasks.length}`, size: 11, color: textColor(true) })
         : null,
     ),
     subtasks.length > 0 ? subtaskProgress(subtasks) : null,
@@ -328,9 +325,9 @@ export const EditorPage = component(() => {
   return Box(
     { key: "editor", fill: true, color: backgroundColor() },
     Page(
-      { padding: 16, gap: 12, header: header() },
-      panel(
-        { key: "main" },
+      { padding: 14, gap: 12, header: header() },
+      section(
+        { key: "main", paddingTop: 8 },
         Input({
           value: draft?.text ?? "",
           placeholder: "Название",
@@ -350,8 +347,9 @@ export const EditorPage = component(() => {
           onInput: (value) => updateDraft({ description: value }),
         }),
       ),
-      panel(
-        { key: "dates", gap: 8 },
+      Divider(),
+      section(
+        { key: "dates" },
         sectionTitle("ВРЕМЯ"),
         Segmented({
           items: ["Весь день", "С и до"],
@@ -370,8 +368,10 @@ export const EditorPage = component(() => {
           ? Text({ text: ui.editorError, size: 12, color: dangerColor() })
           : null,
       ),
+      Divider(),
       Subtasks({ subtasks: draft?.subtasks ?? [] }),
-      panel(
+      Divider(),
+      section(
         { key: "folder" },
         sectionTitle("ПАПКА"),
         Select({
@@ -387,7 +387,8 @@ export const EditorPage = component(() => {
           onChange: (value) => updateDraft({ folderID: String(value) || null }),
         }),
       ),
-      panel(
+      Divider(),
+      section(
         { key: "tags" },
         sectionTitle("ТЕГИ"),
         currentTags.length > 0
@@ -403,11 +404,12 @@ export const EditorPage = component(() => {
             )
           : null,
         Button(
-          { variant: "outline", icon: "sell", fillWidth: true, onClick: openTagSheet },
+          { variant: "outline", icon: "sell", onClick: openTagSheet },
           "Выбрать теги",
         ),
       ),
-      panel(
+      Divider(),
+      section(
         { key: "files" },
         sectionTitle("ФАЙЛЫ"),
         Files({ files: draft?.files ?? [] }),
@@ -415,7 +417,6 @@ export const EditorPage = component(() => {
           {
             variant: "outline",
             icon: "attach_file",
-            fillWidth: true,
             onClick: () => void attachDraftFiles(),
           },
           "Прикрепить файл",
