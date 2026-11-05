@@ -2,6 +2,7 @@ import {
   Box,
   Column,
   Icon,
+  KeepAlive,
   Page,
   Row,
   SearchField,
@@ -281,8 +282,10 @@ export const renderApp = () => {
 
   return Stack(
     { key: "root", fill: true },
-    Box({ key: "list", fill: true, visible: !covered }, MainPage({})),
-    ui.taskCalendarOpen ? TaskCalendarPage({}) : null,
+    KeepAlive({ key: "list", active: !covered }, () => MainPage({})),
+    KeepAlive({ key: "calendar", active: ui.taskCalendarOpen && !ui.editorOpen }, () =>
+      TaskCalendarPage({}),
+    ),
     ui.syncOpen ? SyncPage({}) : null,
     ui.editorOpen ? EditorPage({}) : null,
     ui.viewerPath ? ViewerPage({}) : null,
