@@ -13,6 +13,7 @@ import { DEFAULT_PORT } from "../model.ts"
 import { state } from "../state.ts"
 import { saveSyncConnection } from "../sync.ts"
 import { backgroundColor, textColor } from "../theme.ts"
+import { iconTile } from "./kit.ts"
 import { closeSync } from "./state.ts"
 
 export const SyncPage = component(() => {
@@ -43,9 +44,7 @@ export const SyncPage = component(() => {
   const header = () => {
     return (
       <Row gap={6} fillWidth alignItems="center">
-        <Button variant="ghost" icon="arrow_back" onClick={closeSync}>
-          Назад
-        </Button>
+        {iconTile({ icon: "arrow_back", tooltip: "Назад", onClick: closeSync })}
         <Text size={20} weight="semibold" color={textColor(false)}>
           Синхронизация
         </Text>

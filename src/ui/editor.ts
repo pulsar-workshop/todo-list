@@ -2,7 +2,6 @@ import {
   Box,
   Button,
   Column,
-  Divider,
   Icon,
   IconButton,
   Image,
@@ -11,7 +10,6 @@ import {
   Row,
   Segmented,
   Select,
-  Spacer,
   Stack,
   Text,
   TextArea,
@@ -19,10 +17,17 @@ import {
   component,
 } from "pulsar"
 import { exportAttachment } from "../actions.ts"
-import { fileMeta, formatDateValue } from "../format.ts"
+import { fileMeta, shortDate } from "../format.ts"
 import { isImage } from "../model.ts"
 import { breakpoints, fileURL, state, ui, type DateField } from "../state.ts"
-import { backgroundColor, textColor } from "../theme.ts"
+import {
+  accentFrom,
+  backgroundColor,
+  borderColor,
+  dangerColor,
+  hoverSurfaceColor,
+  textColor,
+} from "../theme.ts"
 import type { Attachment, Subtask } from "../types.ts"
 import {
   addDraftSubtask,
@@ -43,15 +48,14 @@ import {
 import { CalendarSheet } from "./calendar.ts"
 import { TagSheet } from "./tag-sheet.ts"
 import { TagChip } from "./tag-chip.ts"
-
-const section = (text: string) =>
-  Text({
-    text,
-    size: 10,
-    weight: "medium",
-    color: textColor(true),
-    letterSpacing: 1.2,
-  })
+import {
+  accentButton,
+  accentGradient,
+  iconTile,
+  panel,
+  roundCheck,
+  sectionTitle,
+} from "./kit.ts"
 
 const attachmentIcon = (file: Attachment) => {
   if (isImage(file.name)) {
@@ -99,15 +103,6 @@ const attachmentIcon = (file: Attachment) => {
   )
 }
 
-const subtaskMeta = (subtask: Subtask): string => {
-  const parts = [`Создано: ${formatDateValue(subtask.createdAT, false)}`]
-
-  if (subtask.completedAT !== null)
-    parts.push(`Завершено: ${formatDateValue(subtask.completedAT, false)}`)
-
-  return parts.join(" · ")
-}
-
 const attachmentRow = (file: Attachment) =>
   Row(
     { key: file.path, gap: 8, fillWidth: true, alignItems: "center" },
@@ -152,113 +147,168 @@ const attachmentRow = (file: Attachment) =>
 
 const header = () =>
   Row(
-    { gap: 6, fillWidth: true, alignItems: "center" },
-    Button(
-      { variant: "ghost", icon: "arrow_back", onClick: closeEditor },
-      "Назад",
-    ),
+    { gap: 8, fillWidth: true, alignItems: "center" },
+    iconTile({ icon: "arrow_back", tooltip: "Назад", onClick: closeEditor }),
     Text({
       text: "Задача",
       size: 20,
       weight: "semibold",
       color: textColor(false),
+      flex: 1,
     }),
-    Spacer({ fillWidth: true }),
-    Button({ onClick: saveDraft }, "Сохранить"),
-  )
-
-const footer = () =>
-  Row(
-    { gap: 4, fillWidth: true, alignItems: "center" },
-    Button(
-      {
-        variant: "ghost",
-        textColor: "#ef4444",
-        size: "sm",
-        onClick: () => void deleteDraft(),
-      },
-      "Удалить",
-    ),
-    Button({
-      variant: "ghost",
+    iconTile({
       icon: "content_copy",
-      size: "sm",
       tooltip: "Копировать",
       onClick: () => void copyDraft(),
     }),
+    iconTile({
+      icon: "delete",
+      tooltip: "Удалить",
+      color: dangerColor(),
+      onClick: () => void deleteDraft(),
+    }),
+    accentButton({ label: "Сохранить", onClick: saveDraft }),
   )
 
-const dateInput = (key: DateField, withTime = true) =>
+const dateRow = (label: string, key: DateField, withTime = true) =>
   Row(
-    { gap: 4, fillWidth: true, alignItems: "center" },
-    Input({
-      value: ui[key],
+    {
+      key,
+      gap: 12,
+      paddingX: 12,
+      paddingY: 10,
+      radius: 14,
+      color: hoverSurfaceColor(),
+      fillWidth: true,
+      alignItems: "center",
+      pressed: { scale: 0.98 },
+      transition: { duration: 90 },
+      onClick: () => openCalendar(key, withTime),
+    },
+    Icon({ name: "calendar_month", size: 20, color: accentFrom() }),
+    Column(
+      { gap: 1, flex: 1 },
+      Text({ text: label, size: 12, color: textColor(true) }),
+      Text({
+        text: ui[key] || "Не выбрано",
+        size: 15,
+        color: textColor(!ui[key]),
+      }),
+    ),
+  )
+
+const subtaskText = (subtask: Subtask, index: number) => {
+  if (ui.subtaskEditing === subtask.ID) {
+    return TextArea({
+      value: subtask.text,
       variant: "outline",
       textColor: textColor(false),
-      readOnly: true,
-      placeholder: withTime ? "ДД.ММ.ГГГГ ЧЧ:ММ:СС" : "ДД.ММ.ГГГГ",
-      expand: true,
+      lines: Math.max(2, Math.ceil(subtask.text.length / 30)),
+      autoFocus: true,
+      fillWidth: true,
+      onInput: (value) => updateDraftSubtask(index, { text: value }),
+      onBlur: () => {
+        ui.subtaskEditing = ""
+      },
+    })
+  }
+
+  return Box(
+    {
+      fillWidth: true,
+      onClick: () => {
+        ui.subtaskEditing = subtask.ID
+      },
+    },
+    Text({
+      text: subtask.text,
+      size: 15,
+      strike: subtask.done,
+      wrap: true,
+      fillWidth: true,
+      color: textColor(subtask.done),
     }),
-    IconButton({
-      icon: "calendar_month",
-      tooltip: "Выбрать дату",
-      onClick: () => openCalendar(key, withTime),
+  )
+}
+
+const subtaskRow = (subtask: Subtask, index: number) =>
+  Row(
+    { key: subtask.ID, gap: 2, fillWidth: true, alignItems: "start" },
+    roundCheck({
+      done: subtask.done,
+      size: 22,
+      onToggle: () => {
+        const done = !subtask.done
+
+        updateDraftSubtask(index, {
+          done,
+          completedAT: done ? Date.now() : null,
+        })
+      },
     }),
+    Column(
+      { gap: 2, paddingY: 9, flex: 1, fillWidth: true },
+      subtaskText(subtask, index),
+      subtask.completedAT !== null
+        ? Text({
+            text: `Готово: ${shortDate(subtask.completedAT, false)}`,
+            size: 12,
+            color: textColor(true),
+          })
+        : null,
+    ),
+    Column(
+      {
+        width: 40,
+        height: 40,
+        justify: "center",
+        alignItems: "center",
+        pressed: { scale: 0.85 },
+        onClick: () => removeDraftSubtask(index),
+      },
+      Icon({ name: "close", size: 18, color: textColor(true) }),
+    ),
   )
 
-const dateField = (label: string, key: DateField, withTime = true) =>
-  Column(
-    { gap: 4, expand: true },
-    Text({ text: label, size: 11, color: textColor(true) }),
-    dateInput(key, withTime),
+const subtaskProgress = (subtasks: Subtask[]) => {
+  const done = subtasks.filter((subtask) => subtask.done).length
+  const left = subtasks.length - done
+
+  return Row(
+    { height: 3, radius: 2, clip: true, fillWidth: true },
+    done > 0
+      ? Box({ key: "done", flex: done, height: 3, gradient: accentGradient() })
+      : null,
+    left > 0 ? Box({ key: "left", flex: left, height: 3, color: borderColor() }) : null,
   )
+}
 
 const Subtasks = component<{ subtasks: Subtask[] }>(({ subtasks }) => {
-  return Column(
-    { gap: 6, fillWidth: true },
-    ...subtasks.map((subtask, index) =>
-      Row(
-        { key: subtask.ID, gap: 6, fillWidth: true, alignItems: "center" },
-        Button({
-          variant: "ghost",
-          icon: subtask.done ? "check_box" : "check_box_outline_blank",
-          size: "sm",
-          tooltip: subtask.done ? "Снять отметку" : "Готово",
-          onClick: () => {
-            const done = !subtask.done
+  const done = subtasks.filter((subtask) => subtask.done).length
 
-            updateDraftSubtask(index, {
-              done,
-              completedAT: done ? Date.now() : null,
-            })
-          },
-        }),
-        Column(
-          { gap: 2, expand: true },
-          Input({
-            value: subtask.text,
-            variant: "outline",
-            textColor: subtask.done ? textColor(true) : textColor(false),
-            strike: subtask.done,
-            fillWidth: true,
-            onInput: (value) => updateDraftSubtask(index, { text: value }),
-          }),
-          Text({
-            text: subtaskMeta(subtask),
-            size: 11,
-            color: textColor(true),
-            fillWidth: true,
-            wrap: true,
-            maxLines: 2,
-            elide: "right",
-          }),
-        ),
-        IconButton({
-          icon: "close",
-          tooltip: "Удалить",
-          onClick: () => removeDraftSubtask(index),
-        }),
-      ),
+  return panel(
+    { gap: 6 },
+    Row(
+      { fillWidth: true, justify: "between", alignItems: "center" },
+      sectionTitle("ПОДЗАДАЧИ"),
+      subtasks.length > 0
+        ? Text({ text: `${done}/${subtasks.length}`, size: 12, color: textColor(true) })
+        : null,
+    ),
+    subtasks.length > 0 ? subtaskProgress(subtasks) : null,
+    ...subtasks.map(subtaskRow),
+    Row(
+      { key: "new-subtask", gap: 8, fillWidth: true, alignItems: "center" },
+      Input({
+        value: ui.subtaskText,
+        variant: "outline",
+        textColor: textColor(false),
+        placeholder: "Новая подзадача",
+        expand: true,
+        onInput: (value) => (ui.subtaskText = value),
+        onSubmitted: addDraftSubtask,
+      }),
+      accentButton({ icon: "add", onClick: addDraftSubtask }),
     ),
   )
 })
@@ -271,146 +321,105 @@ const Files = component<{ files: Attachment[] }>(({ files }) => {
 })
 
 export const EditorPage = component(() => {
-  const compact = breakpoints.is("compact")
   const draft = ui.draft
-  const editorError = ui.editorError
   const currentTags = draft?.tags ?? []
-  const dateMode = ui.draftDateMode
-  const isAllDay = dateMode === "allDay"
-  const rangeFields = compact
-    ? Column(
-        { gap: 8, fillWidth: true },
-        dateField("С", "draftStart"),
-        dateField("До (дедлайн)", "draftEnd"),
-      )
-    : Row(
-        { gap: 8, fillWidth: true, alignItems: "start" },
-        dateField("С", "draftStart"),
-        dateField("До (дедлайн)", "draftEnd"),
-      )
-  const dateFields = isAllDay
-    ? dateField("Дата", "draftEnd", false)
-    : rangeFields
+  const isAllDay = ui.draftDateMode === "allDay"
 
   return Box(
     { key: "editor", fill: true, color: backgroundColor() },
     Page(
-      {
-        padding: compact ? 12 : 16,
-        gap: 10,
-        header: header(),
-        footer: footer(),
-      },
-      Input({
-        value: draft?.text ?? "",
-        placeholder: "Название",
-        variant: "outline",
-        textColor: textColor(false),
-        height: 48,
-        fillWidth: true,
-        onInput: (value) => updateDraft({ text: value }),
-      }),
-      TextArea({
-        value: draft?.description ?? "",
-        placeholder: "Описание",
-        variant: "outline",
-        textColor: textColor(false),
-        lines: 3,
-        fillWidth: true,
-        onInput: (value) => updateDraft({ description: value }),
-      }),
-      Text({
-        text: "Дата и время выбираются в календаре.",
-        size: 11,
-        color: textColor(true),
-      }),
-      Segmented({
-        items: ["Весь день", "С и до"],
-        value: isAllDay ? 0 : 1,
-        fillWidth: true,
-        onChange: (index) =>
-          setDraftDateMode(index === 0 ? "allDay" : "range"),
-      }),
-      dateFields,
-      Row(
-        { gap: 8, fillWidth: true, alignItems: "center" },
-        Text({ text: "Создано", size: 12, color: textColor(true), width: 76 }),
-        dateInput("draftCreated"),
-      ),
-      draft && draft.completedAT !== null
-        ? Row(
-            { gap: 8, fillWidth: true, alignItems: "center" },
-            Text({
-              text: "Завершено",
-              size: 12,
-              color: textColor(true),
-              width: 76,
-            }),
-            dateInput("draftCompleted"),
-          )
-        : null,
-      editorError
-        ? Text({ text: editorError, size: 12, color: "#ef4444" })
-        : null,
-      Divider(),
-      section("ПАПКА"),
-      Select({
-        options: [
-          { value: "", label: "Без папки" },
-          ...state.folders.map((folder) => ({
-            value: folder.ID,
-            label: folder.name,
-          })),
-        ],
-        value: draft?.folderID ?? "",
-        fillWidth: true,
-        onChange: (value) => updateDraft({ folderID: String(value) || null }),
-      }),
-      Divider(),
-      section("ТЕГИ"),
-      currentTags.length > 0
-        ? Wrap(
-            { gap: 6, fillWidth: true },
-            ...currentTags.map((ID) => {
-              const tag = state.tags.find((item) => item.ID === ID)
-
-              return tag
-                ? TagChip({ key: tag.ID, tag, selected: true, onClick: openTagSheet })
-                : null
-            }),
-          )
-        : Text({ text: "Теги не выбраны", size: 12, color: textColor(true) }),
-      Button(
-        { variant: "outline", icon: "sell", onClick: openTagSheet },
-        "Выбрать теги",
-      ),
-      Divider(),
-      section("ПОДЗАДАЧИ"),
-      Subtasks({ subtasks: draft?.subtasks ?? [] }),
-      Row(
-        { gap: 8, fillWidth: true },
+      { padding: 16, gap: 12, header: header() },
+      panel(
+        { key: "main" },
         Input({
-          value: ui.subtaskText,
+          value: draft?.text ?? "",
+          placeholder: "Название",
           variant: "outline",
           textColor: textColor(false),
-          placeholder: "Новая подзадача",
-          expand: true,
-          onInput: (value) => (ui.subtaskText = value),
-          onSubmitted: addDraftSubtask,
+          height: 48,
+          fillWidth: true,
+          onInput: (value) => updateDraft({ text: value }),
         }),
-        Button({ onClick: addDraftSubtask }, "Добавить"),
-      ),
-      Divider(),
-      section("ФАЙЛЫ"),
-      Files({ files: draft?.files ?? [] }),
-      Button(
-        {
+        TextArea({
+          value: draft?.description ?? "",
+          placeholder: "Описание",
           variant: "outline",
           textColor: textColor(false),
-          icon: "attach_file",
-          onClick: () => void attachDraftFiles(),
-        },
-        "Прикрепить файл",
+          lines: 3,
+          fillWidth: true,
+          onInput: (value) => updateDraft({ description: value }),
+        }),
+      ),
+      panel(
+        { key: "dates", gap: 8 },
+        sectionTitle("ВРЕМЯ"),
+        Segmented({
+          items: ["Весь день", "С и до"],
+          value: isAllDay ? 0 : 1,
+          fillWidth: true,
+          onChange: (index) =>
+            setDraftDateMode(index === 0 ? "allDay" : "range"),
+        }),
+        isAllDay ? dateRow("Дата", "draftEnd", false) : dateRow("С", "draftStart"),
+        isAllDay ? null : dateRow("До (дедлайн)", "draftEnd"),
+        dateRow("Создано", "draftCreated"),
+        draft && draft.completedAT !== null
+          ? dateRow("Завершено", "draftCompleted")
+          : null,
+        ui.editorError
+          ? Text({ text: ui.editorError, size: 12, color: dangerColor() })
+          : null,
+      ),
+      Subtasks({ subtasks: draft?.subtasks ?? [] }),
+      panel(
+        { key: "folder" },
+        sectionTitle("ПАПКА"),
+        Select({
+          options: [
+            { value: "", label: "Без папки" },
+            ...state.folders.map((folder) => ({
+              value: folder.ID,
+              label: folder.name,
+            })),
+          ],
+          value: draft?.folderID ?? "",
+          fillWidth: true,
+          onChange: (value) => updateDraft({ folderID: String(value) || null }),
+        }),
+      ),
+      panel(
+        { key: "tags" },
+        sectionTitle("ТЕГИ"),
+        currentTags.length > 0
+          ? Wrap(
+              { gap: 6, fillWidth: true },
+              ...currentTags.map((ID) => {
+                const tag = state.tags.find((item) => item.ID === ID)
+
+                return tag
+                  ? TagChip({ key: tag.ID, tag, selected: true, onClick: openTagSheet })
+                  : null
+              }),
+            )
+          : null,
+        Button(
+          { variant: "outline", icon: "sell", fillWidth: true, onClick: openTagSheet },
+          "Выбрать теги",
+        ),
+      ),
+      panel(
+        { key: "files" },
+        sectionTitle("ФАЙЛЫ"),
+        Files({ files: draft?.files ?? [] }),
+        Button(
+          {
+            variant: "outline",
+            icon: "attach_file",
+            fillWidth: true,
+            onClick: () => void attachDraftFiles(),
+          },
+          "Прикрепить файл",
+        ),
       ),
       ui.calendarOpen ? CalendarSheet({}) : null,
       ui.tagSheetOpen ? TagSheet({}) : null,

@@ -1,11 +1,7 @@
 import {
   Box,
-  Button,
-  Card,
-  Chip,
   Column,
   Icon,
-  Input,
   Page,
   Row,
   SearchField,
@@ -14,7 +10,6 @@ import {
   Text,
   Wrap,
   component,
-  signal,
   type UiNode,
 } from "pulsar"
 import { addTodo } from "../actions.ts"
@@ -39,16 +34,20 @@ import {
   toggleTheme,
 } from "../theme.ts"
 import type { Todo } from "../types.ts"
+import { Composer } from "./composer.ts"
 import { EditorPage } from "./editor.ts"
 import { FolderSheet } from "./folder-sheet.ts"
+import { iconTile, pill } from "./kit.ts"
 import {
   clearTodoFilters,
   openFolders,
   openSync,
   openTagFilter,
+  openTaskCalendar,
 } from "./state.ts"
 import { SyncPage } from "./sync-dialog.tsx"
 import { TagFilterSheet } from "./tag-filter-sheet.ts"
+import { TaskCalendarPage } from "./task-calendar.ts"
 import { TaskRow } from "./task-row.ts"
 import { ViewerPage } from "./viewer.ts"
 
@@ -56,130 +55,73 @@ const Header = component(() => {
   const compact = breakpoints.is("compact")
 
   return Row(
-    { fillWidth: true, gap: compact ? 6 : 10 },
+    { gap: 8, fillWidth: true, alignItems: "center" },
     Column(
-      { gap: 3, expand: true },
+      { gap: 2, flex: 1 },
       Text({
         text: "Задачи",
-        size: 24,
-        weight: "semibold",
+        size: 28,
+        weight: "bold",
         color: textColor(false),
       }),
       Row(
-        { gap: 8, alignItems: "center" },
+        { gap: 6, alignItems: "center" },
+        Box({ width: 6, height: 6, radius: 3, color: syncColor() }),
         Text({
-          text: `Осталось: ${activeCount.get()}`,
-          size: 12,
+          text: compact
+            ? `Осталось ${activeCount.get()}`
+            : `Осталось ${activeCount.get()} · ${syncLabel()}`,
+          size: 13,
           color: textColor(true),
         }),
-        Box({ width: 6, height: 6, radius: 3, color: syncColor() }),
-        compact
-          ? null
-          : Text({ text: syncLabel(), size: 12, color: syncColor() }),
       ),
     ),
-    Spacer({ fillWidth: true }),
-    Button({
-      variant: "ghost",
-      icon: "sync",
-      tooltip: "Синхронизировать",
-      onClick: () => (state.syncSettings.host ? void syncNow() : openSync()),
-    }),
     compact
       ? null
-      : Button({
-          variant: "ghost",
+      : iconTile({
           icon: isDarkTheme() ? "light_mode" : "dark_mode",
           tooltip: "Сменить тему",
           onClick: toggleTheme,
         }),
-    Button({
-      variant: "ghost",
-      icon: "settings",
-      tooltip: "Настройки",
-      onClick: openSync,
+    iconTile({
+      icon: "sync",
+      tooltip: "Синхронизировать",
+      onClick: () => (state.syncSettings.host ? void syncNow() : openSync()),
+    }),
+    iconTile({ icon: "settings", tooltip: "Настройки", onClick: openSync }),
+    iconTile({
+      icon: "calendar_month",
+      tooltip: "Календарь",
+      onClick: openTaskCalendar,
     }),
   )
 })
 
-const folderChip = (key: string, label: string) => {
-  const selected = activeFolder.get() === key
-
-  return Chip(
-    {
-      key: `folder-${key}`,
-      variant: "outline",
-      color: selected ? textColor(false) : textColor(true),
-      selected,
-      selectedColor: textColor(false),
-      onClick: () => {
-        ui.folderFilter = key
-      },
-    },
+const folderPill = (key: string, label: string) => {
+  return pill({
+    key: `folder-${key}`,
     label,
-  )
+    selected: activeFolder.get() === key,
+    onClick: () => {
+      ui.folderFilter = key
+    },
+  })
 }
 
-const FolderChips = component(() => {
+const FolderPills = component(() => {
   return Wrap(
     { gap: 6, fillWidth: true },
-    folderChip("", "Все"),
-    folderChip("none", "Без папки"),
-    ...state.folders.map((folder) => folderChip(folder.ID, folder.name)),
-    Button({
+    folderPill("", "Все"),
+    folderPill("none", "Без папки"),
+    ...state.folders.map((folder) => folderPill(folder.ID, folder.name)),
+    iconTile({
       key: "folders",
-      variant: "ghost",
-      icon: "folder",
-      size: "sm",
+      icon: "create_new_folder",
       tooltip: "Папки",
+      size: 34,
       onClick: openFolders,
     }),
   )
-})
-
-const NewTask = component(() => {
-  const text = signal("")
-
-  const submit = (): void => {
-    const value = text.peek().trim()
-
-    if (!value) return
-
-    const folder = activeFolder.peek()
-
-    addTodo({ text: value, folderID: folder && folder !== "none" ? folder : null })
-    text.set("")
-  }
-
-  return () => {
-    return Card(
-      {
-        padding: 8,
-        radius: 10,
-        elevation: 0,
-        color: surfaceColor(),
-        borderColor: borderColor(),
-        borderWidth: 1,
-      },
-      Row(
-        { gap: 8, fillWidth: true, alignItems: "center" },
-        Input({
-          value: text.get(),
-          placeholder: "Что нужно сделать?",
-          variant: "outline",
-          textColor: textColor(false),
-          expand: true,
-          autoFocus: ui.newTaskFocus,
-          onInput: (value) => text.set(value),
-          onSubmitted: submit,
-          onBlur: () => {
-            ui.newTaskFocus = false
-          },
-        }),
-        Button({ onClick: submit }, "Добавить"),
-      ),
-    )
-  }
 })
 
 const SearchRow = component(() => {
@@ -193,29 +135,27 @@ const SearchRow = component(() => {
     SearchField({
       value: ui.todoQuery,
       placeholder: "Поиск задач",
+      flex: 1,
       fillWidth: true,
       onInput: (value) => {
         ui.todoQuery = value
       },
     }),
+    state.tags.length > 0
+      ? iconTile({
+          icon: "sell",
+          tooltip: "Теги",
+          badge: activeTags.get().length || undefined,
+          onClick: openTagFilter,
+        })
+      : null,
     filtering
-      ? Button(
-          { variant: "ghost", size: "sm", onClick: clearTodoFilters },
-          "Сбросить",
-        )
-      : Box({ width: 84 }),
-  )
-})
-
-const TagFilterButton = component(() => {
-  const count = activeTags.get().length
-
-  return Row(
-    { gap: 8, fillWidth: true, justify: "center", alignItems: "center" },
-    Button(
-      { variant: "outline", icon: "sell", onClick: openTagFilter },
-      count > 0 ? `Теги · ${count}` : "Теги",
-    ),
+      ? iconTile({
+          icon: "filter_alt_off",
+          tooltip: "Сбросить фильтры",
+          onClick: clearTodoFilters,
+        })
+      : null,
   )
 })
 
@@ -244,7 +184,7 @@ const message = (icon: UiNode, title: string, hint: string) => {
 
 const EmptyState = component(() => {
   return message(
-    Box(
+    Column(
       {
         width: 64,
         height: 64,
@@ -252,8 +192,8 @@ const EmptyState = component(() => {
         color: surfaceColor(),
         borderWidth: 1,
         borderColor: borderColor(),
-        padding: 18,
-        align: "center",
+        justify: "center",
+        alignItems: "center",
       },
       Icon({ name: "checklist", size: 28, color: textColor(true) }),
     ),
@@ -301,21 +241,33 @@ const TaskList = component(() => {
   )
 })
 
-const MainPage = component(() => {
-  const compact = breakpoints.is("compact")
+const NewTask = component(() => {
+  return Composer({
+    placeholder: "Что нужно сделать?",
+    autoFocus: ui.newTaskFocus,
+    onBlur: () => {
+      ui.newTaskFocus = false
+    },
+    onSubmit: (text) => {
+      const folder = activeFolder.peek()
 
+      addTodo({ text, folderID: folder && folder !== "none" ? folder : null })
+    },
+  })
+})
+
+const MainPage = component(() => {
   return Box(
     { key: "main", fill: true, color: backgroundColor() },
     Page(
       {
-        padding: compact ? 14 : 20,
-        gap: compact ? 10 : 14,
+        padding: 16,
+        gap: 12,
         header: Header({}),
+        footer: NewTask({}),
       },
-      FolderChips({}),
-      NewTask({}),
+      FolderPills({}),
       SearchRow({}),
-      state.tags.length > 0 ? TagFilterButton({}) : null,
       TaskList({}),
       TagFilterSheet({}),
       FolderSheet({}),
@@ -324,16 +276,15 @@ const MainPage = component(() => {
 })
 
 export const renderApp = () => {
-  const covered = ui.editorOpen || ui.syncOpen || ui.viewerPath !== ""
+  const covered =
+    ui.editorOpen || ui.syncOpen || ui.viewerPath !== "" || ui.taskCalendarOpen
 
-  return Box(
-    { key: "frame", fill: true, padding: 8 },
-    Stack(
-      { key: "root", fill: true },
-      Box({ key: "list", fill: true, visible: !covered }, MainPage({})),
-      ui.syncOpen ? SyncPage({}) : null,
-      ui.editorOpen ? EditorPage({}) : null,
-      ui.viewerPath ? ViewerPage({}) : null,
-    ),
+  return Stack(
+    { key: "root", fill: true },
+    Box({ key: "list", fill: true, visible: !covered }, MainPage({})),
+    ui.taskCalendarOpen ? TaskCalendarPage({}) : null,
+    ui.syncOpen ? SyncPage({}) : null,
+    ui.editorOpen ? EditorPage({}) : null,
+    ui.viewerPath ? ViewerPage({}) : null,
   )
 }

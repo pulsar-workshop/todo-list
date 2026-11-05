@@ -51,6 +51,11 @@ export const ui = createState({
   calendarHour: "",
   calendarMinute: "",
   calendarSecond: "",
+  taskCalendarOpen: false,
+  taskCalendarYear: 0,
+  taskCalendarMonth: 0,
+  taskCalendarDay: 0,
+  subtaskEditing: "",
   themeDark: true,
   syncStatus: "off",
 })

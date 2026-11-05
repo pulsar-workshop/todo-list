@@ -472,6 +472,12 @@ const closeTopLayer = (): boolean => {
     return true
   }
 
+  if (ui.taskCalendarOpen) {
+    closeTaskCalendar()
+
+    return true
+  }
+
   if (ui.tagFilterOpen) {
     closeTagFilter()
 
@@ -485,6 +491,30 @@ const closeTopLayer = (): boolean => {
   }
 
   return false
+}
+
+export const selectTaskDay = (day: Date): void => {
+  ui.taskCalendarYear = day.getFullYear()
+  ui.taskCalendarMonth = day.getMonth()
+  ui.taskCalendarDay = day.getDate()
+}
+
+export const openTaskCalendar = (): void => {
+  selectTaskDay(new Date())
+  ui.taskCalendarOpen = true
+}
+
+export const closeTaskCalendar = (): void => {
+  ui.taskCalendarOpen = false
+}
+
+export const shiftTaskMonth = (delta: number): void => {
+  const target = new Date(ui.taskCalendarYear, ui.taskCalendarMonth + delta, 1)
+  const days = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+
+  ui.taskCalendarYear = target.getFullYear()
+  ui.taskCalendarMonth = target.getMonth()
+  ui.taskCalendarDay = Math.min(ui.taskCalendarDay, days)
 }
 
 export const handleBack = (): void => {

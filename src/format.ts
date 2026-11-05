@@ -18,6 +18,49 @@ export const formatDateValue = (
   return `${day} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
 }
 
+const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
+
+const dayStart = (value: number): number => {
+  const date = new Date(value)
+
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+}
+
+const dayLabel = (value: number): string => {
+  const date = new Date(value)
+  const days = Math.round((dayStart(value) - dayStart(Date.now())) / 86_400_000)
+
+  if (days === 0) return "Сегодня"
+  if (days === 1) return "Завтра"
+  if (days === -1) return "Вчера"
+
+  const label = `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`
+
+  if (date.getFullYear() === new Date().getFullYear()) return label
+
+  return `${label} ${date.getFullYear()}`
+}
+
+export const shortDate = (value: number, allDay: boolean): string => {
+  if (allDay) return dayLabel(value)
+
+  const date = new Date(value)
+
+  return `${dayLabel(value)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+}
+
+export const dueTone = (todo: Todo): "overdue" | "today" | "later" | "none" => {
+  const value = todo.endAT ?? todo.startAT
+
+  if (value === null || todo.done) return "none"
+
+  const today = dayStart(Date.now())
+
+  if (dayStart(value) === today) return "today"
+
+  return value < today ? "overdue" : "later"
+}
+
 export const isDateOnly = (text: string): boolean => {
   return text.trim() !== "" && !/\d{1,2}:\d{2}/.test(text)
 }
@@ -76,7 +119,7 @@ export const subtaskLabel = (subtasks: Subtask[]): string => {
 
   const done = subtasks.filter((subtask) => subtask.done).length
 
-  return `Подзадачи: ${done}/${subtasks.length}`
+  return `${done}/${subtasks.length}`
 }
 
 export const fileMeta = (size?: number, modifiedAT?: number): string => {

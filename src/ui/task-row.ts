@@ -1,102 +1,102 @@
 import {
   Box,
-  Button,
   Card,
-  Checkbox,
   Column,
-  Icon,
   Row,
-  Spacer,
   Text,
+  Wrap,
   component,
   type ColorValue,
   type UiNode,
 } from "pulsar"
 import { toggleTodo } from "../actions.ts"
-import { formatDateValue, formatDates, subtaskLabel } from "../format.ts"
+import { dueTone, shortDate, subtaskLabel } from "../format.ts"
 import { state, tagByID } from "../state.ts"
 import {
+  accentFrom,
   borderColor,
+  dangerColor,
   hoverSurfaceColor,
   surfaceColor,
   textColor,
 } from "../theme.ts"
 import type { Tag, Todo } from "../types.ts"
+import { metaItem, roundCheck } from "./kit.ts"
 import { openEditor } from "./state.ts"
 
-const metaLine = (todo: Todo): string => {
-  const folder = todo.folderID
-    ? state.folders.find((item) => item.ID === todo.folderID)
-    : null
-  const parts = [
-    `Создано: ${formatDateValue(todo.createdAT, todo.createdAllDay)}`,
-  ]
+const toneColor = (todo: Todo): ColorValue => {
+  const tone = dueTone(todo)
 
-  if (folder) parts.unshift(folder.name)
+  if (tone === "overdue") return dangerColor()
+  if (tone === "today") return accentFrom()
 
-  if (todo.completedAT !== null)
-    parts.push(
-      `Завершено: ${formatDateValue(todo.completedAT, todo.completedAllDay)}`,
-    )
-  if (todo.startAT !== null || todo.endAT !== null)
-    parts.push(formatDates(todo))
-
-  return parts.join(" · ")
+  return "transparent"
 }
+
+const dueItem = (todo: Todo): UiNode | null => {
+  const value = todo.endAT ?? todo.startAT
+
+  if (value === null) return null
+
+  const allDay = todo.endAT !== null ? todo.endAllDay : todo.startAllDay
+  const tone = dueTone(todo)
+
+  return metaItem(
+    "due",
+    "schedule",
+    shortDate(value, allDay),
+    tone === "overdue" || tone === "today" ? toneColor(todo) : textColor(true),
+  )
+}
+
+const tagItem = (tag: Tag): UiNode =>
+  Row(
+    { key: `tag-${tag.ID}`, gap: 4, alignItems: "center" },
+    Box({ width: 6, height: 6, radius: 3, color: tag.color as ColorValue }),
+    Text({ text: tag.name, size: 12, color: textColor(true) }),
+  )
 
 export const TaskRow = component<{
   key: string
   todo: Todo
   visible?: boolean
 }>(({ todo, visible = true }) => {
+  const folder = todo.folderID
+    ? state.folders.find((item) => item.ID === todo.folderID)
+    : null
   const tags = todo.tags
     .map((ID) => tagByID(ID))
     .filter((tag): tag is Tag => tag !== null)
 
-  const tagLabels = tags.map((tag) =>
-    Row(
-      { gap: 4, alignItems: "center" },
-      Box({ width: 6, height: 6, radius: 3, color: tag.color as ColorValue }),
-      Text({ text: tag.name, size: 11, color: textColor(true) }),
-    ),
-  )
-
-  const stats: UiNode[] = []
-
-  if (todo.subtasks.length > 0)
-    stats.push(
-      Row(
-        { gap: 4, alignItems: "center" },
-        Icon({ name: "checklist", size: 14, color: textColor(true) }),
-        Text({ text: subtaskLabel(todo.subtasks), size: 11, color: textColor(true) }),
-      ),
-    )
-
-  if (todo.files.length > 0)
-    stats.push(
-      Row(
-        { gap: 4, alignItems: "center" },
-        Icon({ name: "attach_file", size: 14, color: textColor(true) }),
-        Text({ text: `Файлов: ${todo.files.length}`, size: 11, color: textColor(true) }),
-      ),
-    )
+  const meta = [
+    dueItem(todo),
+    folder ? metaItem("folder", "folder", folder.name) : null,
+    todo.subtasks.length > 0
+      ? metaItem("subtasks", "checklist", subtaskLabel(todo.subtasks))
+      : null,
+    todo.files.length > 0
+      ? metaItem("files", "attach_file", String(todo.files.length))
+      : null,
+    ...tags.map(tagItem),
+  ].filter((item): item is UiNode => item !== null)
 
   return Card(
     {
       key: todo.ID,
       visible,
-      padding: 12,
-      radius: 10,
+      padding: 4,
+      radius: 16,
       elevation: 0,
       color: surfaceColor(),
       hoverColor: hoverSurfaceColor(),
       borderColor: borderColor(),
       borderWidth: 1,
-      opacity: todo.done ? 0.62 : 1,
-      pressed: { scale: 0.98 },
+      opacity: todo.done ? 0.55 : 1,
+      pressed: { scale: 0.98, color: hoverSurfaceColor() },
       enter: { opacity: 0 },
       exit: { opacity: 0 },
       transition: { duration: 180 },
+      onClick: () => openEditor(todo),
       drag: {
         axis: "x",
         onRelease: ({ direction }) => {
@@ -111,19 +111,21 @@ export const TaskRow = component<{
       },
     },
     Row(
-      { gap: 10, fillWidth: true },
-      Checkbox({
-        checked: todo.done,
+      { gap: 2, fillWidth: true },
+      Box({ width: 3, radius: 2, fillHeight: true, color: toneColor(todo) }),
+      roundCheck({
+        done: todo.done,
         onToggle: () => toggleTodo({ ID: todo.ID }),
       }),
       Column(
-        { gap: 4, fillWidth: true, expand: true },
+        { gap: 4, paddingY: 8, paddingRight: 10, fillWidth: true, flex: 1 },
         Text({
           text: todo.text,
           size: 15,
-          weight: "semibold",
+          weight: "medium",
           strike: todo.done,
           fillWidth: true,
+          wrap: true,
           maxLines: 2,
           elide: "right",
           color: textColor(todo.done),
@@ -131,36 +133,15 @@ export const TaskRow = component<{
         todo.description
           ? Text({
               text: todo.description,
-              size: 12,
+              size: 13,
               color: textColor(true),
               fillWidth: true,
-              maxLines: 2,
+              maxLines: 1,
               elide: "right",
             })
           : null,
-        Text({
-          text: metaLine(todo),
-          size: 11,
-          color: textColor(true),
-          fillWidth: true,
-          maxLines: 2,
-          elide: "right",
-        }),
-        stats.length > 0
-          ? Row({ gap: 12, fillWidth: true, alignItems: "center" }, ...stats)
-          : null,
-        tagLabels.length > 0
-          ? Row({ gap: 10, fillWidth: true }, ...tagLabels)
-          : null,
+        meta.length > 0 ? Wrap({ gap: 10, fillWidth: true }, ...meta) : null,
       ),
-      Spacer({ fillWidth: true }),
-      Button({
-        variant: "ghost",
-        icon: "edit",
-        size: "sm",
-        tooltip: "Изменить",
-        onClick: () => openEditor(todo),
-      }),
     ),
   )
 })

@@ -21,6 +21,7 @@ const save = (): void => {
 export const addTodo = (params: {
   text?: unknown
   folderID?: unknown
+  dueAT?: number
 }): void => {
   const text = typeof params?.text === "string" ? params.text.trim() : ""
   const folderID =
@@ -41,11 +42,11 @@ export const addTodo = (params: {
       updatedAT: Date.now(),
       completedAT: null,
       startAT: null,
-      endAT: null,
+      endAT: params.dueAT ?? null,
       createdAllDay: false,
       completedAllDay: false,
       startAllDay: false,
-      endAllDay: false,
+      endAllDay: params.dueAT !== undefined,
       tags: [],
       folderID,
       subtasks: [],

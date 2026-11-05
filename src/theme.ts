@@ -24,16 +24,16 @@ const lightPalette = {
 }
 
 const darkPalette = {
-  background: "#0f1117",
-  surface: "#171a22",
-  surfaceVariant: "#20242e",
-  primary: "#8b9dff",
-  text: "#e7e9f0",
-  textSecondary: "#9aa1b2",
-  border: "#272c38",
-  layer3: "#1d212b",
-  layer4: "#242936",
-  radius: 12,
+  background: "#0a0b12",
+  surface: "#12141e",
+  surfaceVariant: "#1a1d2a",
+  primary: "#b388ff",
+  text: "#e8eaf6",
+  textSecondary: "#8b90a8",
+  border: "#262a3b",
+  layer3: "#161925",
+  layer4: "#1e2130",
+  radius: 14,
   spacing: 8,
 }
 
@@ -73,25 +73,41 @@ export const applyTheme = async (dark = isDarkTheme()): Promise<void> => {
 }
 
 export const textColor = (muted = false): ColorValue => {
-  if (isDarkTheme()) return muted ? "#9aa1b2" : "#e7e9f0"
+  if (isDarkTheme()) return muted ? "#8b90a8" : "#e8eaf6"
 
   return muted ? "#6b7280" : "#1e2230"
 }
 
 export const surfaceColor = (): ColorValue => {
-  return isDarkTheme() ? "#171a22" : "#ffffff"
+  return isDarkTheme() ? "#12141e" : "#ffffff"
 }
 
 export const backgroundColor = (): ColorValue => {
-  return isDarkTheme() ? "#0f1117" : "#f5f6fa"
+  return isDarkTheme() ? "#0a0b12" : "#f5f6fa"
 }
 
 export const borderColor = (): ColorValue => {
-  return isDarkTheme() ? "#272c38" : "#e3e6ee"
+  return isDarkTheme() ? "#262a3b" : "#e3e6ee"
 }
 
 export const hoverSurfaceColor = (): ColorValue => {
-  return isDarkTheme() ? "#1d212b" : "#f7f8fb"
+  return isDarkTheme() ? "#1a1d2a" : "#f0f1f7"
+}
+
+export const accentFrom = (): ColorValue => {
+  return isDarkTheme() ? "#5ce1e6" : "#0ea5b7"
+}
+
+export const accentTo = (): ColorValue => {
+  return isDarkTheme() ? "#b388ff" : "#6c5ce7"
+}
+
+export const dangerColor = (): ColorValue => {
+  return isDarkTheme() ? "#ff5c8a" : "#e11d48"
+}
+
+export const onAccentColor = (): ColorValue => {
+  return isDarkTheme() ? "#0a0b12" : "#ffffff"
 }
 
 export const toggleTheme = (): void => {
