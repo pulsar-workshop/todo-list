@@ -379,6 +379,8 @@ export const removeDraftSubtask = (index: number): void => {
   })
 }
 
+const fileID = (file: Attachment): string => file.key ?? file.path
+
 export const attachDraftFiles = async (): Promise<void> => {
   const draft = ui.draft
 
@@ -392,12 +394,13 @@ export const attachDraftFiles = async (): Promise<void> => {
 
   if (!current) return
 
-  updateDraft({ files: [...current.files, ...added] })
+  // The picker also adds the files to the task, so sync may have put them in the draft already.
+  const known = new Set(current.files.map(fileID))
+
+  updateDraft({ files: [...current.files, ...added.filter((file) => !known.has(fileID(file)))] })
 }
 
 const removedDraftFiles = new Set<string>()
-
-const fileID = (file: Attachment): string => file.key ?? file.path
 
 export const removeDraftFile = (path: string): void => {
   const draft = ui.draft

@@ -90,10 +90,22 @@ export const parseTodo = (value: unknown): Todo | null => {
         .filter((subtask): subtask is Subtask => subtask !== null)
     : []
 
+  const seen = new Set<string>()
+
+  // Older builds could save the same attachment twice; keep the first copy.
   const files = Array.isArray(value.files)
     ? value.files
         .map(parseAttachment)
         .filter((file): file is Attachment => file !== null)
+        .filter((file) => {
+          const ID = file.key ?? file.path
+
+          if (seen.has(ID)) return false
+
+          seen.add(ID)
+
+          return true
+        })
     : []
 
   return {
