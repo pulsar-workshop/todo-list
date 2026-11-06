@@ -1,6 +1,7 @@
 import { Box, Button, Column, Image, Page, Row, Spacer, Text, component } from "pulsar"
 import { fileURL, ui } from "../state.ts"
 import { backgroundColor, textColor } from "../theme.ts"
+import { tr } from "../i18n.ts"
 
 export const ViewerPage = component(() => {
   const path = ui.viewerPath
@@ -19,7 +20,7 @@ export const ViewerPage = component(() => {
               icon: "arrow_back",
               onClick: () => (ui.viewerPath = ""),
             },
-            "Закрыть",
+            tr("Закрыть"),
           ),
           Spacer({ fillWidth: true }),
         ),
@@ -27,7 +28,7 @@ export const ViewerPage = component(() => {
       Column(
         { fillWidth: true, gap: 8 },
         Text({
-          text: "Просмотр",
+          text: tr("Просмотр"),
           size: 10,
           weight: "medium",
           color: textColor(true),

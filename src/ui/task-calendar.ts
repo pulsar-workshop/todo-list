@@ -29,12 +29,8 @@ import {
   shiftTaskMonth,
 } from "./state.ts"
 import { TaskRow } from "./task-row.ts"
+import { tr, dayAndMonth, monthNames, monthShortNames, weekdayFullNames, weekdayNames } from "../i18n.ts"
 
-const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-const WEEKDAYS_FULL = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
-const MONTHS = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
-const MONTHS_OF = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"]
-const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 const MAX_RANGE_DAYS = 62
 
 const dayKey = (year: number, month: number, day: number): string => {
@@ -144,7 +140,7 @@ const MonthGrid = component(() => {
     },
     Row(
       { gap: 2, fillWidth: true },
-      ...WEEKDAYS.map((label) =>
+      ...weekdayNames().map((label) =>
         Text({
           key: label,
           text: label,
@@ -167,10 +163,10 @@ const DayTasks = component(() => {
   return Column(
     { gap: 8, fillWidth: true },
     sectionTitle(
-      `${WEEKDAYS_FULL[date.getDay()]}, ${date.getDate()} ${MONTHS_OF[date.getMonth()]}`.toUpperCase(),
+      `${weekdayFullNames()[date.getDay()]}, ${dayAndMonth(date)}`.toUpperCase(),
     ),
     todos.length === 0
-      ? Text({ text: "На этот день задач нет", size: 13, color: textColor(true) })
+      ? Text({ text: tr("На этот день задач нет"), size: 13, color: textColor(true) })
       : null,
     ...todos.map((todo) => TaskRow({ key: todo.ID, todo })),
   )
@@ -211,7 +207,7 @@ const timelineDate = (todo: Todo): UiNode => {
       color: dateColor(todo),
     }),
     Text({
-      text: MONTHS_SHORT[date.getMonth()] ?? "",
+      text: monthShortNames()[date.getMonth()] ?? "",
       size: 11,
       color: textColor(true),
     }),
@@ -232,7 +228,7 @@ const Timeline = component(() => {
 
   return Column(
     { gap: 8, fillWidth: true },
-    sectionTitle("ТАЙМЛАЙН"),
+    sectionTitle(tr("ТАЙМЛАЙН")),
     ...todos.map((todo, index) =>
       Row(
         { key: todo.ID, gap: 8, fillWidth: true },
@@ -255,9 +251,9 @@ const Header = component(() => {
 
   return Row(
     { gap: 2, fillWidth: true, alignItems: "center" },
-    iconTile({ icon: "arrow_back", tooltip: "Назад", onClick: closeTaskCalendar }),
+    iconTile({ icon: "arrow_back", tooltip: tr("Назад"), onClick: closeTaskCalendar }),
     Text({
-      text: `${MONTHS[ui.taskCalendarMonth]} ${ui.taskCalendarYear}`,
+      text: `${monthNames()[ui.taskCalendarMonth]} ${ui.taskCalendarYear}`,
       size: 18,
       weight: "semibold",
       color: textColor(false),
@@ -269,12 +265,12 @@ const Header = component(() => {
       ? null
       : pill({
           key: "today",
-          label: "Сегодня",
+          label: tr("Сегодня"),
           selected: false,
           onClick: () => selectTaskDay(new Date()),
         }),
-    iconTile({ icon: "chevron_left", tooltip: "Предыдущий месяц", onClick: () => shiftTaskMonth(-1) }),
-    iconTile({ icon: "chevron_right", tooltip: "Следующий месяц", onClick: () => shiftTaskMonth(1) }),
+    iconTile({ icon: "chevron_left", tooltip: tr("Предыдущий месяц"), onClick: () => shiftTaskMonth(-1) }),
+    iconTile({ icon: "chevron_right", tooltip: tr("Следующий месяц"), onClick: () => shiftTaskMonth(1) }),
   )
 })
 
@@ -287,7 +283,7 @@ export const TaskCalendarPage = component(() => {
         gap: 14,
         header: Header({}),
         footer: Composer({
-          placeholder: "Задача на этот день",
+          placeholder: tr("Задача на этот день"),
           onSubmit: (text) => {
             const dueAT = new Date(
               ui.taskCalendarYear,

@@ -20,23 +20,9 @@ import {
   shiftCalendar,
   shiftCalendarYear,
 } from "./state.ts"
+import { tr, monthNames, weekdayNames } from "../i18n.ts"
 
-const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
-const MONTHS = [
-  "Январь",
-  "Февраль",
-  "Март",
-  "Апрель",
-  "Май",
-  "Июнь",
-  "Июль",
-  "Август",
-  "Сентябрь",
-  "Октябрь",
-  "Ноябрь",
-  "Декабрь",
-]
 
 const timeInput = (
   key: "calendarHour" | "calendarMinute" | "calendarSecond",
@@ -106,7 +92,7 @@ export const CalendarSheet = component(() => {
   return Sheet(
     {
       open: true,
-      title: "Выберите дату",
+      title: tr("Выберите дату"),
       onClose: closeCalendar,
     },
     Row(
@@ -122,11 +108,11 @@ export const CalendarSheet = component(() => {
       ),
       IconButton({
         icon: "chevron_left",
-        tooltip: "Предыдущий месяц",
+        tooltip: tr("Предыдущий месяц"),
         onClick: () => shiftCalendar(-1),
       }),
       Text({
-        text: `${MONTHS[month]} ${year}`,
+        text: `${monthNames()[month]} ${year}`,
         size: 16,
         weight: "semibold",
         color: textColor(false),
@@ -135,7 +121,7 @@ export const CalendarSheet = component(() => {
       }),
       IconButton({
         icon: "chevron_right",
-        tooltip: "Следующий месяц",
+        tooltip: tr("Следующий месяц"),
         onClick: () => shiftCalendar(1),
       }),
       Button(
@@ -150,7 +136,7 @@ export const CalendarSheet = component(() => {
     ),
     Grid(
       { columns: 7, gap: 2, fillWidth: true, fillHeight: false, height: 18 },
-      ...WEEKDAYS.map((label) =>
+      ...weekdayNames().map((label) =>
         Text({ text: label, size: 11, color: textColor(true), align: "center" }),
       ),
     ),
@@ -168,17 +154,17 @@ export const CalendarSheet = component(() => {
     withTime
       ? Column(
           { gap: 6, fillWidth: true },
-          Text({ text: "Время", size: 11, color: textColor(true) }),
+          Text({ text: tr("Время"), size: 11, color: textColor(true) }),
           Row(
             { gap: 6, fillWidth: true, alignItems: "center" },
-            timeInput("calendarHour", "ЧЧ"),
+            timeInput("calendarHour", tr("ЧЧ")),
             Text({ text: ":", size: 16, color: textColor(false) }),
-            timeInput("calendarMinute", "ММ"),
+            timeInput("calendarMinute", tr("ММ")),
             Text({ text: ":", size: 16, color: textColor(false) }),
-            timeInput("calendarSecond", "СС"),
+            timeInput("calendarSecond", tr("СС")),
           ),
         )
       : null,
-    Button({ variant: "ghost", onClick: pickCalendarToday }, "Сегодня"),
+    Button({ variant: "ghost", onClick: pickCalendarToday }, tr("Сегодня")),
   )
 })

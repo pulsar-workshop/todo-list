@@ -1,9 +1,8 @@
 import {
   catppuccinTheme,
   direction,
-  setLocale,
+  getLocale,
   storage,
-  system,
   theme,
   type ColorValue,
 } from "pulsar"
@@ -45,12 +44,7 @@ export const applyTheme = async (dark = isDarkTheme()): Promise<void> => {
   const base = catppuccinTheme(dark ? "frappe" : "latte")
 
   const palette = dark ? darkPalette : lightPalette
-  const locale = await system
-    .locale()
-    .then((info) => info.locale)
-    .catch(() => "ru")
-
-  setLocale(locale)
+  const locale = getLocale()
 
   await theme.set({
     ...base,

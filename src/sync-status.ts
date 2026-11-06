@@ -1,6 +1,7 @@
 import { notify, permissions } from "pulsar"
 import { isAndroid } from "./platform.ts"
 import { state, ui } from "./state.ts"
+import { tr } from "./i18n.ts"
 
 let syncWasOnline = false
 let lastSyncAlertAT = 0
@@ -16,15 +17,15 @@ const notifySyncError = async (): Promise<void> => {
       await permissions.request("notifications")
       await notify.channel({
         id: "sync",
-        name: "Синхронизация",
+        name: tr("Синхронизация"),
         importance: 3,
       })
     }
 
     await notify.show({
-      title: "Синхронизация",
-      body: "Сервер недоступен",
-      actions: [{ id: "settings", title: "Настройки" }],
+      title: tr("Синхронизация"),
+      body: tr("Сервер недоступен"),
+      actions: [{ id: "settings", title: tr("Настройки") }],
     })
   } catch {}
 }

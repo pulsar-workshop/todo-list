@@ -19,6 +19,7 @@ import {
   createFolder,
   startRenameFolder,
 } from "./state.ts"
+import { tr } from "../i18n.ts"
 
 export const FolderSheet = component(() => {
   const renameID = ui.folderRenameID
@@ -26,7 +27,7 @@ export const FolderSheet = component(() => {
   return Sheet(
     {
       open: ui.foldersOpen,
-      title: "Папки",
+      title: tr("Папки"),
       onClose: closeFolders,
     },
     state.folders.length > 0
@@ -44,10 +45,10 @@ export const FolderSheet = component(() => {
                     onInput: (value) => (ui.folderRenameText = value),
                     onSubmitted: confirmRenameFolder,
                   }),
-                  Button({ onClick: confirmRenameFolder }, "ОК"),
+                  Button({ onClick: confirmRenameFolder }, tr("ОК")),
                   IconButton({
                     icon: "close",
-                    tooltip: "Отмена",
+                    tooltip: tr("Отмена"),
                     onClick: cancelRenameFolder,
                   }),
                 )
@@ -64,32 +65,32 @@ export const FolderSheet = component(() => {
                   }),
                   IconButton({
                     icon: "edit",
-                    tooltip: "Переименовать",
+                    tooltip: tr("Переименовать"),
                     onClick: () => startRenameFolder(folder),
                   }),
                   IconButton({
                     icon: "delete",
-                    tooltip: "Удалить папку",
+                    tooltip: tr("Удалить папку"),
                     onClick: () => void deleteFolder({ ID: folder.ID }),
                   }),
                 ),
           ),
         )
-      : Text({ text: "Папок пока нет.", size: 12, color: textColor(true) }),
+      : Text({ text: tr("Папок пока нет."), size: 12, color: textColor(true) }),
     Divider(),
     Row(
       { gap: 8, fillWidth: true, alignItems: "center" },
       Input({
         value: ui.folderName,
-        placeholder: "Новая папка",
+        placeholder: tr("Новая папка"),
         variant: "outline",
         textColor: textColor(false),
         expand: true,
         onInput: (value) => (ui.folderName = value),
         onSubmitted: createFolder,
       }),
-      Button({ onClick: createFolder }, "Создать"),
+      Button({ onClick: createFolder }, tr("Создать")),
     ),
-    Button({ variant: "ghost", onClick: closeFolders }, "Готово"),
+    Button({ variant: "ghost", onClick: closeFolders }, tr("Готово")),
   )
 })

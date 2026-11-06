@@ -25,6 +25,7 @@ import {
   toggleDraftTag,
 } from "./state.ts"
 import { TagChip } from "./tag-chip.ts"
+import { tr } from "../i18n.ts"
 
 export const TagSheet = component(() => {
   const draft = ui.draft
@@ -36,7 +37,7 @@ export const TagSheet = component(() => {
   return Sheet(
     {
       open: true,
-      title: "Теги",
+      title: tr("Теги"),
       onClose: closeTagSheet,
     },
     tags.length > 0
@@ -53,7 +54,7 @@ export const TagSheet = component(() => {
           ),
         )
       : Text({
-          text: "Тегов пока нет — создайте первый ниже.",
+          text: tr("Тегов пока нет — создайте первый ниже."),
           size: 12,
           color: textColor(true),
         }),
@@ -62,14 +63,14 @@ export const TagSheet = component(() => {
       { gap: 8, fillWidth: true, alignItems: "center" },
       Input({
         value: ui.tagName,
-        placeholder: "Новый тег",
+        placeholder: tr("Новый тег"),
         variant: "outline",
         textColor: textColor(false),
         expand: true,
         onInput: (value) => (ui.tagName = value),
         onSubmitted: createDraftTag,
       }),
-      Button({ onClick: createDraftTag }, "Добавить"),
+      Button({ onClick: createDraftTag }, tr("Добавить")),
     ),
     Wrap(
       { gap: 8, fillWidth: true },
@@ -103,7 +104,7 @@ export const TagSheet = component(() => {
             : undefined,
           borderWidth: starter ? 1 : 2,
           borderColor: starter ? borderColor() : textColor(false),
-          tooltip: "Свой цвет",
+          tooltip: tr("Свой цвет"),
           onClick: () => void pickCustomTagColor(),
         }),
         starter
@@ -111,6 +112,6 @@ export const TagSheet = component(() => {
           : null,
       ),
     ),
-    Button({ variant: "ghost", onClick: closeTagSheet }, "Готово"),
+    Button({ variant: "ghost", onClick: closeTagSheet }, tr("Готово")),
   )
 })

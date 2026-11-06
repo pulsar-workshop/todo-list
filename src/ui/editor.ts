@@ -57,6 +57,7 @@ import {
   sectionTitle,
   squareCheck,
 } from "./kit.ts"
+import { tr } from "../i18n.ts"
 
 const attachmentIcon = (file: Attachment) => {
   if (isImage(file.name)) {
@@ -105,10 +106,10 @@ const attachmentIcon = (file: Attachment) => {
 }
 
 const subtaskMeta = (subtask: Subtask): string => {
-  const parts = [`Создано: ${formatDateValue(subtask.createdAT, false)}`]
+  const parts = [tr("Создано: {date}", { date: formatDateValue(subtask.createdAT, false) })]
 
   if (subtask.completedAT !== null)
-    parts.push(`Завершено: ${formatDateValue(subtask.completedAT, false)}`)
+    parts.push(tr("Завершено: {date}", { date: formatDateValue(subtask.completedAT, false) }))
 
   return parts.join(" · ")
 }
@@ -140,17 +141,17 @@ const attachmentRow = (file: Attachment) =>
     ),
     IconButton({
       icon: "open_in_new",
-      tooltip: "Открыть",
+      tooltip: tr("Открыть"),
       onClick: () => openAttachment(file),
     }),
     IconButton({
       icon: "download",
-      tooltip: "Скачать",
+      tooltip: tr("Скачать"),
       onClick: () => void exportAttachment(file.path, file.name, file.modifiedAT),
     }),
     IconButton({
       icon: "close",
-      tooltip: "Убрать",
+      tooltip: tr("Убрать"),
       onClick: () => removeDraftFile(file.path),
     }),
   )
@@ -158,9 +159,9 @@ const attachmentRow = (file: Attachment) =>
 const header = () =>
   Row(
     { gap: 2, fillWidth: true, alignItems: "center" },
-    iconTile({ icon: "arrow_back", tooltip: "Назад", onClick: closeEditor }),
+    iconTile({ icon: "arrow_back", tooltip: tr("Назад"), onClick: closeEditor }),
     Text({
-      text: "Задача",
+      text: tr("Задача"),
       size: 18,
       weight: "semibold",
       color: textColor(false),
@@ -168,16 +169,16 @@ const header = () =>
     }),
     iconTile({
       icon: "content_copy",
-      tooltip: "Копировать",
+      tooltip: tr("Копировать"),
       onClick: () => void copyDraft(),
     }),
     iconTile({
       icon: "delete",
-      tooltip: "Удалить",
+      tooltip: tr("Удалить"),
       color: dangerColor(),
       onClick: () => void deleteDraft(),
     }),
-    accentButton({ label: "Сохранить", onClick: saveDraft }),
+    accentButton({ label: tr("Сохранить"), onClick: saveDraft }),
   )
 
 const dateRow = (label: string, key: DateField, withTime = true) =>
@@ -202,7 +203,7 @@ const dateRow = (label: string, key: DateField, withTime = true) =>
       { gap: 1, flex: 1 },
       Text({ text: label, size: 11, color: textColor(true) }),
       Text({
-        text: ui[key] || "Не выбрано",
+        text: ui[key] || tr("Не выбрано"),
         size: 14,
         color: textColor(!ui[key]),
       }),
@@ -298,7 +299,7 @@ const Subtasks = component<{ subtasks: Subtask[] }>(({ subtasks }) => {
     { gap: 4 },
     Row(
       { fillWidth: true, justify: "between", alignItems: "center" },
-      sectionTitle("ПОДЗАДАЧИ"),
+      sectionTitle(tr("ПОДЗАДАЧИ")),
       subtasks.length > 0
         ? Text({ text: `${done}/${subtasks.length}`, size: 11, color: textColor(true) })
         : null,
@@ -311,7 +312,7 @@ const Subtasks = component<{ subtasks: Subtask[] }>(({ subtasks }) => {
         value: ui.subtaskText,
         variant: "outline",
         textColor: textColor(false),
-        placeholder: "Новая подзадача",
+        placeholder: tr("Новая подзадача"),
         expand: true,
         onInput: (value) => (ui.subtaskText = value),
         onSubmitted: addDraftSubtask,
@@ -341,7 +342,7 @@ export const EditorPage = component(() => {
         { key: "main", paddingTop: 8 },
         Input({
           value: draft?.text ?? "",
-          placeholder: "Название",
+          placeholder: tr("Название"),
           variant: "outline",
           textColor: textColor(false),
           height: 48,
@@ -350,7 +351,7 @@ export const EditorPage = component(() => {
         }),
         TextArea({
           value: draft?.description ?? "",
-          placeholder: "Описание",
+          placeholder: tr("Описание"),
           variant: "outline",
           textColor: textColor(false),
           lines: 3,
@@ -361,19 +362,19 @@ export const EditorPage = component(() => {
       Divider(),
       section(
         { key: "dates" },
-        sectionTitle("ВРЕМЯ"),
+        sectionTitle(tr("ВРЕМЯ")),
         Segmented({
-          items: ["Весь день", "С и до"],
+          items: [tr("Весь день"), tr("С и до")],
           value: isAllDay ? 0 : 1,
           fillWidth: true,
           onChange: (index) =>
             setDraftDateMode(index === 0 ? "allDay" : "range"),
         }),
-        isAllDay ? dateRow("Дата", "draftEnd", false) : dateRow("С", "draftStart"),
-        isAllDay ? null : dateRow("До (дедлайн)", "draftEnd"),
-        dateRow("Создано", "draftCreated"),
+        isAllDay ? dateRow(tr("Дата"), "draftEnd", false) : dateRow(tr("С"), "draftStart"),
+        isAllDay ? null : dateRow(tr("До (дедлайн)"), "draftEnd"),
+        dateRow(tr("Создано"), "draftCreated"),
         draft && draft.completedAT !== null
-          ? dateRow("Завершено", "draftCompleted")
+          ? dateRow(tr("Завершено"), "draftCompleted")
           : null,
         ui.editorError
           ? Text({ text: ui.editorError, size: 12, color: dangerColor() })
@@ -384,10 +385,10 @@ export const EditorPage = component(() => {
       Divider(),
       section(
         { key: "folder" },
-        sectionTitle("ПАПКА"),
+        sectionTitle(tr("ПАПКА")),
         Select({
           options: [
-            { value: "", label: "Без папки" },
+            { value: "", label: tr("Без папки") },
             ...state.folders.map((folder) => ({
               value: folder.ID,
               label: folder.name,
@@ -401,7 +402,7 @@ export const EditorPage = component(() => {
       Divider(),
       section(
         { key: "tags" },
-        sectionTitle("ТЕГИ"),
+        sectionTitle(tr("ТЕГИ")),
         currentTags.length > 0
           ? Wrap(
               { gap: 6, fillWidth: true },
@@ -416,13 +417,13 @@ export const EditorPage = component(() => {
           : null,
         Button(
           { variant: "outline", icon: "sell", onClick: openTagSheet },
-          "Выбрать теги",
+          tr("Выбрать теги"),
         ),
       ),
       Divider(),
       section(
         { key: "files" },
-        sectionTitle("ФАЙЛЫ"),
+        sectionTitle(tr("ФАЙЛЫ")),
         Files({ files: draft?.files ?? [] }),
         Button(
           {
@@ -430,7 +431,7 @@ export const EditorPage = component(() => {
             icon: "attach_file",
             onClick: () => void attachDraftFiles(),
           },
-          "Прикрепить файл",
+          tr("Прикрепить файл"),
         ),
       ),
       ui.calendarOpen ? CalendarSheet({}) : null,

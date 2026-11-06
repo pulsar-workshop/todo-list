@@ -51,6 +51,7 @@ import { TagFilterSheet } from "./tag-filter-sheet.ts"
 import { TaskCalendarPage } from "./task-calendar.ts"
 import { TaskRow } from "./task-row.ts"
 import { ViewerPage } from "./viewer.ts"
+import { tr } from "../i18n.ts"
 
 const Header = component(() => {
   const compact = breakpoints.is("compact")
@@ -60,7 +61,7 @@ const Header = component(() => {
     Column(
       { gap: 2, flex: 1 },
       Text({
-        text: "Задачи",
+        text: tr("Задачи"),
         size: 22,
         weight: "semibold",
         color: textColor(false),
@@ -70,8 +71,8 @@ const Header = component(() => {
         Box({ width: 6, height: 6, radius: 3, color: syncColor() }),
         Text({
           text: compact
-            ? `Осталось ${activeCount.get()}`
-            : `Осталось ${activeCount.get()} · ${syncLabel()}`,
+            ? tr("Осталось {count}", { count: activeCount.get() })
+            : tr("Осталось {count} · {sync}", { count: activeCount.get(), sync: syncLabel() }),
           size: 12,
           color: textColor(true),
         }),
@@ -81,18 +82,18 @@ const Header = component(() => {
       ? null
       : iconTile({
           icon: isDarkTheme() ? "light_mode" : "dark_mode",
-          tooltip: "Сменить тему",
+          tooltip: tr("Сменить тему"),
           onClick: toggleTheme,
         }),
     iconTile({
       icon: "sync",
-      tooltip: "Синхронизировать",
+      tooltip: tr("Синхронизировать"),
       onClick: () => (state.syncSettings.host ? void syncNow() : openSync()),
     }),
-    iconTile({ icon: "settings", tooltip: "Настройки", onClick: openSync }),
+    iconTile({ icon: "settings", tooltip: tr("Настройки"), onClick: openSync }),
     iconTile({
       icon: "calendar_month",
-      tooltip: "Календарь",
+      tooltip: tr("Календарь"),
       onClick: openTaskCalendar,
     }),
   )
@@ -112,13 +113,13 @@ const folderPill = (key: string, label: string) => {
 const FolderPills = component(() => {
   return Wrap(
     { gap: 6, fillWidth: true },
-    folderPill("", "Все"),
-    folderPill("none", "Без папки"),
+    folderPill("", tr("Все")),
+    folderPill("none", tr("Без папки")),
     ...state.folders.map((folder) => folderPill(folder.ID, folder.name)),
     iconTile({
       key: "folders",
       icon: "create_new_folder",
-      tooltip: "Папки",
+      tooltip: tr("Папки"),
       size: 28,
       onClick: openFolders,
     }),
@@ -135,7 +136,7 @@ const SearchRow = component(() => {
     { gap: 8, fillWidth: true, alignItems: "center" },
     SearchField({
       value: ui.todoQuery,
-      placeholder: "Поиск задач",
+      placeholder: tr("Поиск задач"),
       flex: 1,
       fillWidth: true,
       onInput: (value) => {
@@ -145,7 +146,7 @@ const SearchRow = component(() => {
     state.tags.length > 0
       ? iconTile({
           icon: "sell",
-          tooltip: "Теги",
+          tooltip: tr("Теги"),
           badge: activeTags.get().length || undefined,
           onClick: openTagFilter,
         })
@@ -153,7 +154,7 @@ const SearchRow = component(() => {
     filtering
       ? iconTile({
           icon: "filter_alt_off",
-          tooltip: "Сбросить фильтры",
+          tooltip: tr("Сбросить фильтры"),
           onClick: clearTodoFilters,
         })
       : null,
@@ -198,8 +199,8 @@ const EmptyState = component(() => {
       },
       Icon({ name: "checklist", size: 28, color: textColor(true) }),
     ),
-    "Пока пусто",
-    "Добавьте первую задачу.",
+    tr("Пока пусто"),
+    tr("Добавьте первую задачу."),
   )
 })
 
@@ -212,8 +213,8 @@ const NothingFound = component(() => {
       fillWidth: true,
       align: "center",
     }),
-    "Ничего не найдено",
-    "Измените запрос или сбросьте фильтры.",
+    tr("Ничего не найдено"),
+    tr("Измените запрос или сбросьте фильтры."),
   )
 })
 
@@ -244,7 +245,7 @@ const TaskList = component(() => {
 
 const NewTask = component(() => {
   return Composer({
-    placeholder: "Что нужно сделать?",
+    placeholder: tr("Что нужно сделать?"),
     autoFocus: ui.newTaskFocus,
     onBlur: () => {
       ui.newTaskFocus = false

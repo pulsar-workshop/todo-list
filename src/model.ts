@@ -1,4 +1,5 @@
 import type { Attachment, Folder, Subtask, Tag, Todo } from "./types.ts"
+import { tr } from "./i18n.ts"
 
 export const DEFAULT_PORT = "8008"
 
@@ -187,7 +188,7 @@ export const todoAsText = (todo: Todo, tags: Tag[]): string => {
       (ID) => tags.find((tag) => tag.ID === ID)?.name ?? ID,
     )
 
-    lines.push(`Теги: ${names.join(", ")}`)
+    lines.push(tr("Теги: {names}", { names: names.join(", ") }))
   }
 
   return lines.join("\n")

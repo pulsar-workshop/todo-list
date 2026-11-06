@@ -14,6 +14,7 @@ import { isImage, newID, todoAsText } from "../model.ts"
 import { activeTags, app, state, ui, type DateField } from "../state.ts"
 import { flushState } from "../storage.ts"
 import type { Attachment, Folder, Subtask, Todo } from "../types.ts"
+import { tr } from "../i18n.ts"
 
 export const TAG_PALETTE = [
   "#ef4444",
@@ -250,14 +251,14 @@ export const saveDraft = (): void => {
     createdAT === undefined ||
     completedAT === undefined
   ) {
-    ui.editorError = "Дата: ДД.ММ.ГГГГ, время: ЧЧ:ММ:СС (время можно не указывать)"
+    ui.editorError = tr("Дата: ДД.ММ.ГГГГ, время: ЧЧ:ММ:СС (время можно не указывать)")
     return
   }
 
   const text = draft.text.trim()
 
   if (!text) {
-    ui.editorError = "Название не может быть пустым"
+    ui.editorError = tr("Название не может быть пустым")
     return
   }
 
@@ -287,8 +288,8 @@ export const deleteDraft = async (): Promise<void> => {
   if (!draft) return
 
   const ok = await dialog.message({
-    title: "Удалить задачу?",
-    text: "Задачу нельзя будет восстановить.",
+    title: tr("Удалить задачу?"),
+    text: tr("Задачу нельзя будет восстановить."),
   })
 
   if (!ok) return
@@ -311,7 +312,7 @@ export const toggleDraftTag = (ID: string): void => {
 
 export const pickCustomTagColor = async (): Promise<void> => {
   const current = ui.tagColor
-  const picked = await dialog.color({ title: "Цвет тега", color: current })
+  const picked = await dialog.color({ title: tr("Цвет тега"), color: current })
 
   if (picked) ui.tagColor = picked
 }
@@ -425,7 +426,7 @@ export const copyDraft = async (): Promise<void> => {
 
   try {
     await clipboard.write(todoAsText(draft, state.tags))
-    await dialog.toast("Скопировано")
+    await dialog.toast(tr("Скопировано"))
   } catch {}
 }
 
@@ -436,7 +437,7 @@ export const shareDraft = async (): Promise<void> => {
 
   try {
     await share.text(todoAsText(draft, state.tags), {
-      title: "Поделиться задачей",
+      title: tr("Поделиться задачей"),
     })
   } catch {}
 }

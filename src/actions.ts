@@ -10,6 +10,7 @@ import { persistState } from "./storage.ts"
 import { deleteRemoteFile, markDirty, push } from "./sync.ts"
 import { app, state, ui } from "./state.ts"
 import type { Attachment, Folder, Tag } from "./types.ts"
+import { tr } from "./i18n.ts"
 
 const save = (): void => {
   markDirty()
@@ -171,8 +172,8 @@ export const deleteFolder = async (params: { ID?: unknown }): Promise<void> => {
   if (!folder) return
 
   const ok = await dialog.message({
-    title: "Удалить папку?",
-    text: `Задачи из «${folder.name}» останутся без папки.`,
+    title: tr("Удалить папку?"),
+    text: tr("Задачи из «{name}» останутся без папки.", { name: folder.name }),
   })
 
   if (!ok) return
@@ -222,8 +223,8 @@ export const deleteTag = async (params: { ID?: unknown }): Promise<void> => {
   if (!tag) return
 
   const ok = await dialog.message({
-    title: "Удалить тег?",
-    text: `Тег «${tag.name}» исчезнет у всех задач.`,
+    title: tr("Удалить тег?"),
+    text: tr("Тег «{name}» исчезнет у всех задач.", { name: tag.name }),
   })
 
   if (!ok) return
@@ -258,7 +259,7 @@ export const pickFiles = async (params: {
 
   try {
     picked = await dialog.openFiles({
-      title: "Прикрепить файлы",
+      title: tr("Прикрепить файлы"),
       dir: dirs.home,
       filter: "All files (*)",
     })
@@ -350,7 +351,7 @@ export const copyTodo = async (params: { ID?: unknown }): Promise<void> => {
 
   try {
     await clipboard.write(todoAsText(todo, state.tags))
-    await dialog.toast("Скопировано")
+    await dialog.toast(tr("Скопировано"))
   } catch {}
 }
 
@@ -362,7 +363,7 @@ export const shareTodo = async (params: { ID?: unknown }): Promise<void> => {
 
   try {
     await share.text(todoAsText(todo, state.tags), {
-      title: "Поделиться задачей",
+      title: tr("Поделиться задачей"),
     })
   } catch {}
 }
@@ -377,7 +378,7 @@ export const exportAttachment = async (
   try {
     const ok = await fs.exportTo(path, name, modifiedAT)
 
-    if (ok) await dialog.toast("Скачано")
+    if (ok) await dialog.toast(tr("Скачано"))
   } catch {}
 }
 

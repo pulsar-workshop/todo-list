@@ -1,6 +1,7 @@
 import { App, computed, createBreakpoints, createState, type ColorValue } from "pulsar"
 import { DEFAULT_PORT } from "./model.ts"
 import type { Folder, SyncSettings, Tag, Todo } from "./types.ts"
+import { tr } from "./i18n.ts"
 
 export const app = new App()
 
@@ -94,11 +95,11 @@ export const fileURL = (path: string): string => {
 export const syncLabel = (): string => {
   const status = ui.syncStatus
 
-  if (status === "ok") return "Синхронизировано"
-  if (status === "error") return "Сервер недоступен"
-  if (status === "idle") return "Ожидание"
+  if (status === "ok") return tr("Синхронизировано")
+  if (status === "error") return tr("Сервер недоступен")
+  if (status === "idle") return tr("Ожидание")
 
-  return "Синхронизация выключена"
+  return tr("Синхронизация выключена")
 }
 
 export const syncColor = (): ColorValue => {

@@ -1,4 +1,6 @@
+import { effect } from "pulsar"
 import { openPath } from "./actions.ts"
+import { initLanguage, language } from "./i18n.ts"
 import { installMenu } from "./menu.ts"
 import { watchTheme } from "./theme.ts"
 import { app, state, ui } from "./state.ts"
@@ -34,9 +36,15 @@ app.on("power-resume", () => {
   if (state.syncSettings.host) void syncNow()
 })
 
-installMenu()
-
 const start = async (): Promise<void> => {
+  await initLanguage()
+
+  // The native menu is not part of the rendered tree, so it is rebuilt when the language changes.
+  effect(() => {
+    language.get()
+    installMenu()
+  })
+
   await loadSyncSettings()
   await restore()
 

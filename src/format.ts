@@ -1,4 +1,5 @@
 import type { Subtask, Todo } from "./types.ts"
+import { tr, language, monthShortNames } from "./i18n.ts"
 
 const pad2 = (value: number): string => {
   return String(value).padStart(2, "0")
@@ -18,7 +19,6 @@ export const formatDateValue = (
   return `${day} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
 }
 
-const MONTHS_SHORT = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"]
 
 const dayStart = (value: number): number => {
   const date = new Date(value)
@@ -30,11 +30,14 @@ const dayLabel = (value: number): string => {
   const date = new Date(value)
   const days = Math.round((dayStart(value) - dayStart(Date.now())) / 86_400_000)
 
-  if (days === 0) return "Сегодня"
-  if (days === 1) return "Завтра"
-  if (days === -1) return "Вчера"
+  if (days === 0) return tr("Сегодня")
+  if (days === 1) return tr("Завтра")
+  if (days === -1) return tr("Вчера")
 
-  const label = `${date.getDate()} ${MONTHS_SHORT[date.getMonth()]}`
+  const label =
+    language.get() === "en"
+      ? `${monthShortNames()[date.getMonth()]} ${date.getDate()}`
+      : `${date.getDate()} ${monthShortNames()[date.getMonth()]}`
 
   if (date.getFullYear() === new Date().getFullYear()) return label
 
@@ -100,16 +103,19 @@ export const parseTime = (text: string): number | null | undefined => {
 
 export const formatDates = (todo: Todo): string => {
   if (todo.startAT !== null && todo.endAT !== null) {
-    return `с ${formatDateValue(todo.startAT, todo.startAllDay)} до ${formatDateValue(todo.endAT, todo.endAllDay)}`
+    return tr("с {from} до {to}", {
+      from: formatDateValue(todo.startAT, todo.startAllDay),
+      to: formatDateValue(todo.endAT, todo.endAllDay),
+    })
   }
 
   if (todo.endAT !== null && todo.endAllDay && todo.startAT === null)
     return formatDateValue(todo.endAT, true)
 
   if (todo.endAT !== null)
-    return `до ${formatDateValue(todo.endAT, todo.endAllDay)}`
+    return tr("до {date}", { date: formatDateValue(todo.endAT, todo.endAllDay) })
   if (todo.startAT !== null)
-    return `с ${formatDateValue(todo.startAT, todo.startAllDay)}`
+    return tr("с {date}", { date: formatDateValue(todo.startAT, todo.startAllDay) })
 
   return ""
 }
@@ -125,7 +131,7 @@ export const subtaskLabel = (subtasks: Subtask[]): string => {
 export const fileMeta = (size?: number, modifiedAT?: number): string => {
   const parts: string[] = []
 
-  if (size) parts.push(`${Math.max(1, Math.round(size / 1024))} КБ`)
+  if (size) parts.push(tr("{size} КБ", { size: Math.max(1, Math.round(size / 1024)) }))
   if (modifiedAT) parts.push(formatDateValue(modifiedAT, true))
 
   return parts.join(" · ")

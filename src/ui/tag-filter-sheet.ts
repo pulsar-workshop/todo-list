@@ -6,6 +6,7 @@ import {
   closeTagFilter,
   toggleFilterTag,
 } from "./state.ts"
+import { tr } from "../i18n.ts"
 
 export const TagFilterSheet = component(() => {
   const filterIDs = activeTags.get()
@@ -14,7 +15,7 @@ export const TagFilterSheet = component(() => {
   return Sheet(
     {
       open: ui.tagFilterOpen,
-      title: "Фильтр по тегам",
+      title: tr("Фильтр по тегам"),
       onClose: closeTagFilter,
     },
     tags.length > 0
@@ -35,11 +36,11 @@ export const TagFilterSheet = component(() => {
           ),
         )
       : Text({
-          text: "Тегов пока нет.",
+          text: tr("Тегов пока нет."),
           size: 12,
           color: textColor(true),
         }),
-    Button({ variant: "ghost", onClick: clearTagFilters }, "Сбросить теги"),
-    Button({ variant: "ghost", onClick: closeTagFilter }, "Готово"),
+    Button({ variant: "ghost", onClick: clearTagFilters }, tr("Сбросить теги")),
+    Button({ variant: "ghost", onClick: closeTagFilter }, tr("Готово")),
   )
 })
