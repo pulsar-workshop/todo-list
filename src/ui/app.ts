@@ -265,6 +265,7 @@ const MainPage = component(() => {
       {
         padding: 14,
         gap: 10,
+        overscroll: false,
         header: Header({}),
         footer: NewTask({}),
       },

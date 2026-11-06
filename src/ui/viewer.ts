@@ -12,6 +12,7 @@ export const ViewerPage = component(() => {
       {
         padding: 8,
         gap: 8,
+        overscroll: false,
         header: Row(
           { fillWidth: true, alignItems: "center" },
           Button(

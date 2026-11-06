@@ -281,6 +281,7 @@ export const TaskCalendarPage = component(() => {
       {
         padding: 14,
         gap: 14,
+        overscroll: false,
         header: Header({}),
         footer: Composer({
           placeholder: tr("Задача на этот день"),

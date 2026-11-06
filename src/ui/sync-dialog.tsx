@@ -68,7 +68,7 @@ export const SyncPage = component(() => {
   return () => {
     return (
       <Box key="sync" fill color={backgroundColor()} {...screenMotion}>
-        <Page padding={16} gap={10} header={header()} footer={footer()}>
+        <Page padding={16} gap={10} overscroll={false} header={header()} footer={footer()}>
           <Text size={10} weight="medium" color={textColor(true)} letterSpacing={1.2}>
             {tr("ЯЗЫК")}
           </Text>

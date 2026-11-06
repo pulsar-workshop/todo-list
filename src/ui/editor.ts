@@ -337,7 +337,7 @@ export const EditorPage = component(() => {
   return Box(
     { key: "editor", fill: true, color: backgroundColor(), ...screenMotion },
     Page(
-      { padding: 14, gap: 12, header: header() },
+      { padding: 14, gap: 12, overscroll: false, header: header() },
       section(
         { key: "main", paddingTop: 8 },
         Input({
