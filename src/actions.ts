@@ -2,7 +2,6 @@ import { clipboard, dialog, fs, paths, share } from "pulsar"
 import {
   attachmentKey,
   baseName,
-  isVideo,
   newID,
   parseTodo,
   todoAsText,
@@ -389,31 +388,5 @@ export const openPath = async (path: string): Promise<void> => {
 
   try {
     await fs.open(path)
-
-    return
-  } catch {}
-
-  if (typeof Bun === "undefined" || typeof process === "undefined") return
-
-  if (process.platform === "linux" && isVideo(path)) {
-    try {
-      Bun.spawn(["mpv", "--fs", "--force-window=yes", path], {
-        stdout: "ignore",
-        stderr: "ignore",
-      })
-
-      return
-    } catch {}
-  }
-
-  const command =
-    process.platform === "darwin"
-      ? ["open", path]
-      : process.platform === "win32"
-        ? ["cmd", "/c", "start", "", path]
-        : ["xdg-open", path]
-
-  try {
-    Bun.spawn(command, { stdout: "ignore", stderr: "ignore" })
   } catch {}
 }
