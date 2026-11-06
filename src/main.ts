@@ -1,4 +1,4 @@
-import { effect } from "pulsar"
+import { effect, untracked } from "pulsar"
 import { openPath } from "./actions.ts"
 import { initLanguage, language } from "./i18n.ts"
 import { installMenu } from "./menu.ts"
@@ -7,7 +7,7 @@ import { app, state, ui } from "./state.ts"
 import { flushState, loadSyncSettings, restore } from "./storage.ts"
 import { pull, push, syncNow } from "./sync.ts"
 import { renderApp } from "./ui/app.ts"
-import { focusNewTask, handleBack, openSync } from "./ui/state.ts"
+import { focusNewTask, handleBack, openSync, refreshDraftFiles } from "./ui/state.ts"
 
 app.on("back-pressed", handleBack)
 app.on("open-file", (params: { path?: unknown }) => {
@@ -43,6 +43,12 @@ const start = async (): Promise<void> => {
   effect(() => {
     language.get()
     installMenu()
+  })
+
+  // Sync replaces tasks under an open editor; its copy picks up new and downloaded files.
+  effect(() => {
+    void state.todos
+    untracked(refreshDraftFiles)
   })
 
   await loadSyncSettings()

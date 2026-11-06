@@ -30,6 +30,8 @@ export const TAG_PALETTE = [
 export const openEditor = (todo: Todo): void => {
   const draft = JSON.parse(JSON.stringify(todo)) as Todo
 
+  removedDraftFiles.clear()
+
   ui.draft = draft
   ui.draftStart = formatDateValue(draft.startAT, draft.startAllDay)
   ui.draftEnd = formatDateValue(draft.endAT, draft.endAllDay)
@@ -393,13 +395,40 @@ export const attachDraftFiles = async (): Promise<void> => {
   updateDraft({ files: [...current.files, ...added] })
 }
 
+const removedDraftFiles = new Set<string>()
+
+const fileID = (file: Attachment): string => file.key ?? file.path
+
 export const removeDraftFile = (path: string): void => {
   const draft = ui.draft
 
   if (!draft) return
 
+  for (const file of draft.files) if (file.path === path) removedDraftFiles.add(fileID(file))
+
   removeFile({ ID: draft.ID, path })
   updateDraft({ files: draft.files.filter((file) => file.path !== path) })
+}
+
+/**
+ * Brings files that sync added or finished downloading into the open editor.
+ * The draft is a copy taken when the editor opened, so without this a file from
+ * another device shows on the task row but not in the editor, and saving the
+ * draft would drop it.
+ */
+export const refreshDraftFiles = (): void => {
+  const draft = ui.draft
+  const todo = draft ? state.todos.find((item) => item.ID === draft.ID) : undefined
+
+  if (!draft || !todo) return
+
+  const synced = new Map(todo.files.map((file) => [fileID(file), file]))
+  const known = new Set(draft.files.map(fileID))
+  const kept = draft.files.map((file) => synced.get(fileID(file)) ?? file)
+  const added = todo.files.filter((file) => !known.has(fileID(file)) && !removedDraftFiles.has(fileID(file)))
+  const changed = added.length > 0 || kept.some((file, index) => file !== draft.files[index])
+
+  if (changed) updateDraft({ files: [...kept, ...added] })
 }
 
 export const openAttachment = (file: Attachment): void => {
