@@ -218,6 +218,34 @@ const NothingFound = component(() => {
   )
 })
 
+// Inactive tasks wait under one quiet line, so the list shows only what is being worked on.
+const InactiveToggle = component<{ count: number }>(({ count }) => {
+  return Row(
+    {
+      key: "inactive-toggle",
+      gap: 6,
+      paddingY: 8,
+      paddingX: 4,
+      fillWidth: true,
+      alignItems: "center",
+      onClick: () => {
+        ui.showInactive = !ui.showInactive
+      },
+    },
+    Icon({
+      name: ui.showInactive ? "expand_less" : "expand_more",
+      size: 18,
+      color: textColor(true),
+    }),
+    Text({
+      text: tr("Неактивные · {count}", { count }),
+      size: 12,
+      weight: "medium",
+      color: textColor(true),
+    }),
+  )
+})
+
 const TaskList = component(() => {
   const query = ui.todoQuery.trim().toLowerCase()
   const tags = activeTags.get()
@@ -234,11 +262,16 @@ const TaskList = component(() => {
   }
 
   const rows = sortedTodos.get().map((todo) => ({ todo, visible: matches(todo) }))
-  const empty = !rows.some((row) => row.visible)
+  const inactive = rows.filter((row) => !row.todo.active && row.visible).length
+  const shown = rows.some((row) => row.visible && (row.todo.active || ui.showInactive))
+  const empty = !shown && inactive === 0
 
   return Column(
     { gap: 8, fillWidth: true },
-    ...rows.map(({ todo, visible }) => TaskRow({ key: todo.ID, todo, visible })),
+    ...rows.map(({ todo, visible }) => {
+      return TaskRow({ key: todo.ID, todo, visible: visible && (todo.active || ui.showInactive) })
+    }),
+    inactive > 0 ? InactiveToggle({ count: inactive }) : null,
     empty ? (rows.length === 0 ? EmptyState({}) : NothingFound({})) : null,
   )
 })

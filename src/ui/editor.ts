@@ -361,6 +361,17 @@ export const EditorPage = component(() => {
       ),
       Divider(),
       section(
+        { key: "status" },
+        sectionTitle(tr("СТАТУС")),
+        Segmented({
+          items: [tr("Активная"), tr("Неактивная")],
+          value: draft?.active === false ? 1 : 0,
+          fillWidth: true,
+          onChange: (index) => updateDraft({ active: index === 0 }),
+        }),
+      ),
+      Divider(),
+      section(
         { key: "dates" },
         sectionTitle(tr("ВРЕМЯ")),
         Segmented({

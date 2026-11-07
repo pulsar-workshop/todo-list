@@ -113,6 +113,7 @@ export const parseTodo = (value: unknown): Todo | null => {
     text: value.text,
     description: typeof value.description === "string" ? value.description : "",
     done: value.done,
+    active: value.active !== false,
     createdAT: asNumber(value.createdAT ?? value.createdAt) ?? Date.now(),
     updatedAT:
       asNumber(value.updatedAT) ?? asNumber(value.createdAT) ?? Date.now(),

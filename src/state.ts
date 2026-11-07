@@ -35,6 +35,7 @@ export const ui = createState({
   filterTags: [] as string[],
   folderFilter: "",
   tagFilterOpen: false,
+  showInactive: false,
   foldersOpen: false,
   folderName: "",
   folderRenameID: "",
@@ -63,7 +64,7 @@ export const ui = createState({
 })
 
 export const activeCount = computed(() => {
-  return state.todos.filter((todo) => !todo.done).length
+  return state.todos.filter((todo) => todo.active && !todo.done).length
 })
 
 export const sortedTodos = computed(() => {

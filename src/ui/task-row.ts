@@ -9,7 +9,7 @@ import {
   type ColorValue,
   type UiNode,
 } from "pulsar"
-import { toggleTodo } from "../actions.ts"
+import { toggleActive, toggleTodo } from "../actions.ts"
 import { dueTone, shortDate, subtaskLabel } from "../format.ts"
 import { state, tagByID } from "../state.ts"
 import {
@@ -91,7 +91,7 @@ export const TaskRow = component<{
       hoverColor: hoverSurfaceColor(),
       borderColor: borderColor(),
       borderWidth: 1,
-      opacity: todo.done ? 0.55 : 1,
+      opacity: todo.done ? 0.55 : todo.active ? 1 : 0.7,
       pressed: { color: hoverSurfaceColor() },
       enter: { opacity: 0 },
       exit: { opacity: 0 },
@@ -102,6 +102,12 @@ export const TaskRow = component<{
         onRelease: ({ direction }) => {
           if (direction === "right") {
             toggleTodo({ ID: todo.ID })
+
+            return
+          }
+
+          if (direction === "left") {
+            toggleActive({ ID: todo.ID })
 
             return
           }

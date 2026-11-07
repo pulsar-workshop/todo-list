@@ -38,6 +38,7 @@ export const addTodo = (params: {
       text,
       description: "",
       done: false,
+      active: true,
       createdAT: Date.now(),
       updatedAT: Date.now(),
       completedAT: null,
@@ -79,6 +80,19 @@ export const saveTask = (params: { json?: unknown; task?: unknown }): void => {
   state.todos = exists
     ? state.todos.map((todo) => (todo.ID === task.ID ? task : todo))
     : [...state.todos, task]
+  save()
+}
+
+export const toggleActive = (params: { ID?: unknown }): void => {
+  const ID = typeof params?.ID === "string" ? params.ID : ""
+
+  if (!ID) return
+
+  state.todos = state.todos.map((todo) => {
+    if (todo.ID !== ID) return todo
+
+    return { ...todo, active: !todo.active, updatedAT: Date.now() }
+  })
   save()
 }
 

@@ -20,6 +20,8 @@ export type Todo = {
   text: string
   description: string
   done: boolean
+  /** Inactive tasks stay out of the main list until the user opens them. */
+  active: boolean
   createdAT: number
   updatedAT: number
   completedAT: number | null
