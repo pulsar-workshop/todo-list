@@ -1,20 +1,23 @@
 # Todo List
 
-A minimal todo list built with [Pulsar](https://github.com/riclud/pulsar) (TypeScript UI + Bun backend).
+A minimal todo list built with [Pulsar](https://github.com/riclud/pulsar) (TypeScript UI on a native Qt renderer).
 
 Add a task, mark it done, or delete it. Each task can be renamed, described,
 given a start and end time (or just a deadline), tags with colors, subtasks and
-attached files. Tasks are persisted in the app data directory.
+attached files. Tasks can be set inactive: they wait under a collapsed line at the end of
+the list, so the main view shows only what is being worked on. Tasks are persisted in the
+app data directory.
 
 The task editor copies or shares a task, sync failures raise a native
-notification, and macOS gets a native menu bar. `Ctrl+N` focuses the new-task
-field, `Ctrl+R` syncs immediately and `Ctrl+,` opens the sync settings. The
+notification, and macOS gets a native menu bar where `Ctrl+N` focuses the new-task
+field, `Ctrl+R` syncs immediately and `Ctrl+,` opens the settings. The
 theme follows the system light/dark scheme and can be switched from the header.
 
 ## Requirements
 
-- [Bun](https://bun.sh) (the Pulsar CLI runs on Bun)
-- The Pulsar toolchain 1.2.3 or newer: run `pulsar install` once
+- [Pulsar](https://github.com/riclud/pulsar) 2.1.0 or newer. It installs the app's
+  packages on the first run.
+- [Bun](https://bun.sh) only for the sync server.
 
 ## Project layout
 
@@ -34,25 +37,24 @@ src/
 ## Develop
 
 ```
-bun run dev
+pulsar dev
 ```
 
 ## Run
 
 ```
-bun run start
+pulsar run
 ```
 
-`dev` and `start` clear `QT_QPA_PLATFORMTHEME` so the file picker uses Qt's
-own dialog. With the KDE platform theme (`QT_QPA_PLATFORMTHEME=kde`) on
-Hyprland the native dialog can fail to list files (`KIO: Unknown protocol
-"file"`); for a built binary run it as
-`QT_QPA_PLATFORMTHEME= ./todo-list`.
+With the KDE platform theme (`QT_QPA_PLATFORMTHEME=kde`) on Hyprland the native file
+dialog can fail to list files (`KIO: Unknown protocol "file"`). Clear the variable for Qt's
+own dialog: `QT_QPA_PLATFORMTHEME= pulsar dev`, or `QT_QPA_PLATFORMTHEME= ./todo-list` for a
+built binary.
 
 ## Build a single-file app
 
 ```
-bun run build
+pulsar build
 ```
 
 The result goes to `dist/todo-list`.
@@ -71,7 +73,7 @@ Android into `PULSAR_HOME` (about 4.5 GB, one time). The result is
 
 ## Sync between devices
 
-`bun run server` starts a small Bun server on port 8008 (override with `PORT`,
+`bun server.ts` starts a small Bun server on port 8008 (override with `PORT`,
 set `PASSWORD` to require a bearer token). It stores everything in `sync.db`
 (SQLite) next to the script:
 
